@@ -44,28 +44,42 @@ var addTaskCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 
+		save(taskName, taskStatus)
+	},
+}
+
+func save(name string, status string)  {
 		task := Task{
-			Id: 1,
+			Id: 0,
 			Name: taskName,
 			Status: taskStatus,
 			TotalTimeInSeconds: 0,
 		}
 
-		save(task)
-	},
-}
-
-func save(task Task)  {
 		if isDatabaseFileEmpty() {
 			tasks = []Task{ task }
 		} else {
 			readDatabaseFile()
 		}
 
+		task.Id = maxId(tasks) + 1
+
 		tasks = append(tasks, task)
 		jsonString := toJSON(tasks)
 
 		writeToDatabaseFile(jsonString)
+}
+
+func maxId(tasks []Task) int {
+	id := 0
+
+	for _, t := range tasks {
+		if t.Id > id {
+			id = t.Id
+		}
+	}
+
+	return id
 }
 
 func readDatabaseFile() {
