@@ -34,6 +34,7 @@ var taskName string
 var taskStatus string
 
 var tasks []Task
+var lastId int
 
 // addTaskCmd represents the addTask command
 var addTaskCmd = &cobra.Command{
@@ -42,6 +43,7 @@ var addTaskCmd = &cobra.Command{
 	Long: `Creates a task.`,
 
 	Run: func(cmd *cobra.Command, args []string) {
+
 		task := Task{
 			Id: 1,
 			Name: taskName,
@@ -60,6 +62,7 @@ func save(task Task)  {
 			readDatabaseFile()
 		}
 
+		tasks = append(tasks, task)
 		jsonString := toJSON(tasks)
 
 		writeToDatabaseFile(jsonString)
@@ -76,7 +79,7 @@ func readDatabaseFile() {
 }
 
 func writeToDatabaseFile(jsonString []byte)  {
-	f, err := os.OpenFile(TasksFile, os.O_APPEND|os.O_WRONLY, 0666)
+	f, err := os.Create(TasksFile)
 	defer f.Close()
 
 	if err != nil {
@@ -109,13 +112,13 @@ func isDatabaseFileEmpty() bool {
 	if err != nil {
 	    log.Fatal(err)
 	}
-	fi, err := file.Stat()
+	f, err := file.Stat()
 	if err != nil {
 	    log.Fatal(err)
 	}
-	fmt.Println("filesize: ", fi.Size())
+	fmt.Println("filesize: ", f.Size())
 
-	return fi.Size() == 0
+	return f.Size() == 0
 }
 
 func init() {
