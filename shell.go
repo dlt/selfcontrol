@@ -1,41 +1,41 @@
 package main
 
 import (
-	"os"
-        "fmt"
-        "log"
-        "errors"
-	"strconv"
-        "io/ioutil"
-        "encoding/json"
-        "github.com/abiosoft/ishell"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/abiosoft/ishell"
 	"github.com/olekukonko/tablewriter"
+	"io/ioutil"
+	"log"
+	"os"
+	"strconv"
 )
 
 type Task struct {
-	Id 		int
-	Name		string
-	Status		string
+	Id                 int
+	Name               string
+	Status             string
 	TotalTimeInSeconds int
 }
 
 var (
-        InvalidArgumentList = errors.New("invalid argument list")
-        InvalidNumericArgument = errors.New("invalid numeric argument")
-        tasksFilepath string = "/Users/dlt/golang/src/SelfControl/tasks.json"
-        tasks []Task
-        lastId int
+	InvalidArgumentList           = errors.New("invalid argument list")
+	InvalidNumericArgument        = errors.New("invalid numeric argument")
+	tasksFilepath          string = "/Users/dlt/golang/src/SelfControl/tasks.json"
+	tasks                  []Task
+	lastId                 int
 )
 
-func main()  {
-        shell := ishell.New()
-        shell.Println("The greatest conquest is self–control")
+func main() {
+	shell := ishell.New()
+	shell.Println("The greatest conquest is self–control")
 
-        shell.Register("list", listTasks)
-        shell.Register("add", addTask)
-        shell.Register("delete", deleteTask)
+	shell.Register("list", listTasks)
+	shell.Register("add", addTask)
+	shell.Register("delete", deleteTask)
 
-        shell.Start()
+	shell.Start()
 }
 
 func listTasks(args ...string) (string, error) {
@@ -48,44 +48,44 @@ func listTasks(args ...string) (string, error) {
 	}
 	table.Render()
 
-        return "", nil
+	return "", nil
 }
 
-func addTask(args ...string) (string, error)  {
-        if len(args) < 2 {
-                return "", InvalidArgumentList
-        }
-        name := args[0]
-        status := args[1]
-        saveTask(name, status)
-        return "task created", nil
+func addTask(args ...string) (string, error) {
+	if len(args) < 2 {
+		return "", InvalidArgumentList
+	}
+	name := args[0]
+	status := args[1]
+	saveTask(name, status)
+	return "task created", nil
 }
 
-func deleteTask(args ...string) (string, error)  {
-        if len(args) != 1 {
-                return "", InvalidArgumentList
-        }
-        id, err := strconv.Atoi(args[0])
-        if err != nil {
-                return args[0], InvalidNumericArgument
-        }
-        if tasks == nil {
-                readDatabaseFile()
-        }
-        tasks := removeTaskWithId(tasks, id)
-        persist(tasks)
-        listTasks("")
-        return "", nil
+func deleteTask(args ...string) (string, error) {
+	if len(args) != 1 {
+		return "", InvalidArgumentList
+	}
+	id, err := strconv.Atoi(args[0])
+	if err != nil {
+		return args[0], InvalidNumericArgument
+	}
+	if tasks == nil {
+		readDatabaseFile()
+	}
+	tasks := removeTaskWithId(tasks, id)
+	persist(tasks)
+	listTasks("")
+	return "", nil
 }
 
 func removeTaskWithId(tasks []Task, id int) []Task {
-        var newTasks []Task
-        for _, t := range tasks {
-                if t.Id != id {
-                        newTasks = append(newTasks, t)
-                }
-        }
-        return newTasks
+	var newTasks []Task
+	for _, t := range tasks {
+		if t.Id != id {
+			newTasks = append(newTasks, t)
+		}
+	}
+	return newTasks
 }
 
 func createRows() [][]string {
@@ -109,16 +109,16 @@ func readDatabaseFile() {
 	json.Unmarshal(raw, &tasks)
 }
 
-func saveTask(name string, status string)  {
+func saveTask(name string, status string) {
 	task := Task{
-		Id: 0,
-		Name: name,
-		Status: status,
+		Id:                 0,
+		Name:               name,
+		Status:             status,
 		TotalTimeInSeconds: 0,
 	}
 
 	if isDatabaseFileEmpty() {
-		tasks = []Task{ task }
+		tasks = []Task{task}
 	} else {
 		readDatabaseFile()
 	}
@@ -126,7 +126,7 @@ func saveTask(name string, status string)  {
 	task.Id = maxId(tasks) + 1
 
 	tasks = append(tasks, task)
-        persist(tasks)
+	persist(tasks)
 }
 
 func persist(tasks []Task) {
@@ -145,7 +145,7 @@ func maxId(tasks []Task) int {
 	return id
 }
 
-func writeToDatabaseFile(jsonString []byte)  {
+func writeToDatabaseFile(jsonString []byte) {
 	f, err := os.Create(tasksFilepath)
 	defer f.Close()
 
