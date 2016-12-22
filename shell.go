@@ -20,11 +20,17 @@ type Task struct {
 	TotalTimeInSeconds int
 }
 
+type TaskTimer struct {
+	Timer     *time.Timer
+	StartedAt time.Time
+	Task      *Task
+}
+
 var (
-	InvalidArgumentList                        = errors.New("invalid argument list")
-	InvalidNumericArgument                     = errors.New("invalid numeric argument")
-	tasksFilepath          string              = "/Users/dlt/golang/src/SelfControl/tasks.json"
-	timers                 map[int]*time.Timer = make(map[int]*time.Timer)
+	InvalidArgumentList                      = errors.New("invalid argument list")
+	InvalidNumericArgument                   = errors.New("invalid numeric argument")
+	tasksFilepath          string            = "/Users/dlt/golang/src/SelfControl/tasks.json"
+	timers                 map[int]TaskTimer = make(map[int]TaskTimer)
 	tasks                  []Task
 	lastId                 int
 )
@@ -36,7 +42,8 @@ func main() {
 	shell.Register("list", listTasks)
 	shell.Register("add", addTask)
 	shell.Register("delete", deleteTask)
-	shell.Register("start", start)
+	shell.Register("start", startTask)
+	shell.Register("status", setTaskStatus)
 
 	shell.Start()
 }
@@ -45,7 +52,7 @@ func main() {
 func listTasks(args ...string) (string, error) {
 	readDatabaseFile()
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"id", "name", "status", "time"})
+	table.SetHeader([]string{"id", "name", "status", "time", "ellapsed time"})
 
 	for _, row := range createRows() {
 		table.Append(row)
@@ -55,14 +62,27 @@ func listTasks(args ...string) (string, error) {
 	return "", nil
 }
 
+func setTaskStatus(args ...string) (string, error) {
+	if len(args) != 2 {
+		return "", InvalidArgumentList
+	}
+	id, err := strconv.Atoi(args[0])
+	if err != nil {
+		return args[0], InvalidNumericArgument
+	}
+	status := args[1]
+	task := findTaskWithId(id)
+	task.setStatus(status)
+	return "", nil
+}
+
 // Creates a new task given name and status
 func addTask(args ...string) (string, error) {
-	if len(args) < 2 {
+	if len(args) != 1 {
 		return "", InvalidArgumentList
 	}
 	name := args[0]
-	status := args[1]
-	saveTask(name, status)
+	saveTask(name)
 	return "task created", nil
 }
 
@@ -78,14 +98,14 @@ func deleteTask(args ...string) (string, error) {
 	if tasks == nil {
 		readDatabaseFile()
 	}
-	tasks := removeTaskWithId(tasks, id)
-	persist(tasks)
+	removeTaskWithId(id)
+	persist()
 	listTasks("")
 	return "", nil
 }
 
 // Starts a timer for a given task id
-func start(args ...string) (string, error) {
+func startTask(args ...string) (string, error) {
 	if len(args) != 2 {
 		return "", InvalidArgumentList
 	}
@@ -98,15 +118,26 @@ func start(args ...string) (string, error) {
 	if err != nil {
 		return args[1], InvalidNumericArgument
 	}
-
 	task := findTaskWithId(id)
-	startTimerForTask(task, timeInMinutes)
+	task.setStatus("DOING")
+	task.startTimerForTask(timeInMinutes)
 	return "", nil
 }
 
-func startTimerForTask(t *Task, d time.Duration) {
+func (t *Task) setStatus(status string) {
+	t.Status = status
+	removeTaskWithId(t.Id)
+	tasks = append(tasks, *t)
+	persist()
+}
+
+func (t *Task) startTimerForTask(d time.Duration) {
 	timer := time.NewTimer(d)
-	timers[t.Id] = timer
+	timers[t.Id] = TaskTimer{
+		Task:      t,
+		Timer:     timer,
+		StartedAt: time.Now(),
+	}
 
 	go func() {
 		<-timer.C
@@ -114,21 +145,20 @@ func startTimerForTask(t *Task, d time.Duration) {
 	}()
 }
 
-func removeTaskWithId(tasks []Task, id int) []Task {
+func removeTaskWithId(id int) {
 	var newTasks []Task
 	for _, t := range tasks {
 		if t.Id != id {
 			newTasks = append(newTasks, t)
 		}
 	}
-	return newTasks
+	tasks = newTasks
 }
 
 func findTaskWithId(id int) *Task {
 	for _, t := range getTasks() {
 		if t.Id == id {
 			return &t
-
 		}
 	}
 	return nil
@@ -147,11 +177,26 @@ func createRows() [][]string {
 	var rows = [][]string{}
 
 	for _, t := range getTasks() {
-		row := []string{strconv.Itoa(t.Id), t.Name, t.Status, strconv.Itoa(t.TotalTimeInSeconds)}
+		row := []string{
+			strconv.Itoa(t.Id),
+			t.Name,
+			t.Status,
+			strconv.Itoa(t.TotalTimeInSeconds),
+			ellapsedTime(t),
+		}
 		rows = append(rows, row)
 	}
 
 	return rows
+}
+
+func ellapsedTime(t Task) string {
+	timer := timers[t.Id]
+	minutes := timer.StartedAt.Sub(time.Now()).Minutes()
+	if t.Status != "DOING" {
+		return "-"
+	}
+	return strconv.FormatFloat(minutes, 'E', -1, 32)
 }
 
 func readDatabaseFile() {
@@ -160,15 +205,14 @@ func readDatabaseFile() {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
-
 	json.Unmarshal(raw, &tasks)
 }
 
-func saveTask(name string, status string) {
+func saveTask(name string) {
 	task := Task{
 		Id:                 0,
 		Name:               name,
-		Status:             status,
+		Status:             "TODO",
 		TotalTimeInSeconds: 0,
 	}
 
@@ -176,10 +220,10 @@ func saveTask(name string, status string) {
 	task.Id = maxId(tasks) + 1
 
 	tasks = append(tasks, task)
-	persist(tasks)
+	persist()
 }
 
-func persist(tasks []Task) {
+func persist() {
 	writeToDatabaseFile(toJSON(tasks))
 }
 
@@ -191,7 +235,6 @@ func maxId(tasks []Task) int {
 			id = t.Id
 		}
 	}
-
 	return id
 }
 
@@ -207,7 +250,6 @@ func writeToDatabaseFile(jsonString []byte) {
 	if err != nil {
 		fmt.Println("error:", err)
 	}
-	f.Sync()
 }
 
 func toJSON(tasks []Task) []byte {
@@ -215,7 +257,6 @@ func toJSON(tasks []Task) []byte {
 	if err != nil {
 		fmt.Println("error:", err)
 	}
-
 	return j
 }
 
