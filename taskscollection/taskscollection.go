@@ -2,32 +2,35 @@ package taskscollection
 
 import (
 	"encoding/json"
-	"os"
 	"errors"
-	"strconv"
-	"github.com/olekukonko/tablewriter"
-	"github.com/HouzuoGuo/tiedot/db"
-	"strings"
-	_ "github.com/HouzuoGuo/tiedot/dberr"
-	_ "io/ioutil"
-	_ "log"
-        _ "reflect"
-	_ "time"
-	_ "github.com/deckarep/gosx-notifier"
-	_ "github.com/deckarep/gosx-notifier"
 	_ "fmt"
+	"github.com/HouzuoGuo/tiedot/db"
+	_ "github.com/HouzuoGuo/tiedot/dberr"
+	_ "github.com/deckarep/gosx-notifier"
+	"github.com/olekukonko/tablewriter"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 )
 
 var (
-        myDBDir 		  = "/Users/dlt/.selfcontrol"
-	collectionName		  = "Tasks"
-        ErrNoSuchTask             = errors.New("no such task")
-	tasksCollection		  *db.Col
+	myDBDir         = "/Users/dlt/.selfcontrol"
+	collectionName  = "Tasks"
+	ErrNoSuchTask   = errors.New("no such task")
+	tasksCollection *db.Col
+	timers          = make(map[int]taskTimer)
 )
 
 type Task map[string]interface{}
 
-func init()  {
+type taskTimer struct {
+	Timer     *time.Timer
+	StartedAt time.Time
+	Task      *Task
+}
+
+func init() {
 	tasksDB, err := db.OpenDB(myDBDir)
 	if err != nil {
 		panic(err)
@@ -38,8 +41,8 @@ func init()  {
 
 func Create(name string) {
 	task := map[string]interface{}{
-		"name":               name,
-		"status":             "TODO",
+		"name":   name,
+		"status": "TODO",
 	}
 	_, err := tasksCollection.Insert(task)
 	if err != nil {
@@ -47,7 +50,7 @@ func Create(name string) {
 	}
 }
 
-func Print()  {
+func Print() {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"ID", "name", "status"})
 	table.SetAutoFormatHeaders(false)
@@ -63,11 +66,11 @@ func Delete(id int) {
 	}
 }
 
-func  UpdateFields(taskID int, fieldValuePairs []string) (bool, error) {
+func UpdateFields(taskID int, fieldValuePairs []string) (bool, error) {
 	task, err := tasksCollection.Read(taskID)
-        if err != nil {
-                return false, err
-        }
+	if err != nil {
+		return false, err
+	}
 
 	for _, pair := range fieldValuePairs {
 		arr := strings.Split(pair, ":")
@@ -78,54 +81,17 @@ func  UpdateFields(taskID int, fieldValuePairs []string) (bool, error) {
 		task[field] = value
 	}
 
-	err = tasksCollection.Update(taskID, task)
-        if err != nil {
-                return false, err
-        }
+	if err = tasksCollection.Update(taskID, task); err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
-
-func createRows() [][]string {
-	var rows = [][]string{}
-	tasksCollection.ForEachDoc(func (id int, raw []byte) (willMoveOn bool) {
-		var doc Task
-		json.Unmarshal(raw, &doc)
-		name := doc["name"].(string)
-		status := doc["status"].(string)
-		row := []string{
-			strconv.Itoa(id),
-			name,
-			status,
-		}
-		rows = append(rows, row)
-		return true
-	})
-	return rows
-}
-
-/*func ellapsedTime(t Task) string {
-	timer := timers[t.ID]
-	seconds := time.Now().Sub(timer.StartedAt).Seconds()
-	if t.Status != "DOING" {
-		return "-"
+func StartTimerForTask(taskID int, d time.Duration) {
+	task, err := tasksCollection.Read(taskID)
+	if err != nil {
+		panic(err)
 	}
-	return strconv.FormatFloat(seconds, 'E', -1, 32)
-}
-
-type taskTimer struct {
-	Timer     *time.Timer
-	StartedAt time.Time
-	Task      *Task
-}
-
-timers                    = make(map[int]taskTimer)
-
-func (tc *TasksCollection) StartTimerForTask(taskID int, d time.Duration) {
-	task, err := tc.Find(taskID)
-        if err != nil {
-                panic(err)
-        }
 	timer := time.NewTimer(d)
 	timers[task.ID] = taskTimer{
 		Task:      task,
@@ -141,4 +107,31 @@ func (tc *TasksCollection) StartTimerForTask(taskID int, d time.Duration) {
 
 func pushNotification(message string) {
 	gosxnotifier.NewNotification(message).Push()
-}*/
+}
+
+func createRows() [][]string {
+	var rows = [][]string{}
+	tasksCollection.ForEachDoc(func(id int, raw []byte) (willMoveOn bool) {
+		var doc Task
+		json.Unmarshal(raw, &doc)
+		name := doc["name"].(string)
+		status := doc["status"].(string)
+		row := []string{
+			strconv.Itoa(id),
+			name,
+			status,
+		}
+		rows = append(rows, row)
+		return true
+	})
+	return rows
+}
+
+func ellapsedTime(t Task) string {
+	timer := timers[t.ID]
+	seconds := time.Now().Sub(timer.StartedAt).Seconds()
+	if t.Status != "DOING" {
+		return "-"
+	}
+	return strconv.FormatFloat(seconds, 'E', -1, 32)
+}

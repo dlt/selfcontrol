@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/abiosoft/ishell"
-	 "strconv"
-	_ "time"
 	"errors"
+	"github.com/abiosoft/ishell"
 	tasks "github.com/dlt/selfcontrol/taskscollection"
+	"strconv"
+	_ "time"
 )
 
 var ErrInvalidArgumentList = errors.New("invalid argument list")
@@ -51,7 +51,7 @@ func deleteTask(args ...string) (string, error) {
 	if err != nil {
 		return args[0], ErrInvalidNumericArgument
 	}
-        tasks.Delete(id)
+	tasks.Delete(id)
 	tasks.Print()
 	return "", nil
 }
