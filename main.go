@@ -2,19 +2,13 @@ package main
 
 import (
 	"github.com/abiosoft/ishell"
-	"strconv"
-	"time"
+	_ "strconv"
+	_ "time"
 	"errors"
-	"github.com/dlt/selfcontrol/taskscollection"
+	tasks "github.com/dlt/selfcontrol/taskscollection"
 )
 
-var (
-        ErrInvalidArgumentList    = errors.New("invalid argument list")
-        ErrInvalidNumericArgument = errors.New("invalid numeric argument")
-        ErrNoSuchTask             = errors.New("no such task")
-	tasks                     = taskscollection.TasksCollection{Outdated:false}
-	lastID                    int
-)
+var ErrInvalidArgumentList = errors.New("invalid argument list")
 
 func main() {
 	shell := ishell.New()
@@ -23,33 +17,16 @@ func main() {
         listTasks("")
 	shell.Register("list", listTasks)
 	shell.Register("add", addTask)
-	shell.Register("delete", deleteTask)
-	shell.Register("start", startTask)
+	/*shell.Register("delete", deleteTask)
 	shell.Register("status", setTaskStatus)
+	shell.Register("start", startTask)*/
 
 	shell.Start()
 }
 
 // Print all tasks in a ASCII table
 func listTasks(args ...string) (string, error) {
-        tasks.Load()
 	tasks.Print()
-	return "", nil
-}
-
-func setTaskStatus(args ...string) (string, error) {
-	if len(args) != 2 {
-		return "", ErrInvalidArgumentList
-	}
-	id, err := strconv.Atoi(args[0])
-	if err != nil {
-		return args[0], ErrInvalidNumericArgument
-	}
-	status := args[1]
-	_, err = tasks.UpdateStatus(id, status)
-	if err != nil {
-		return "couldn't update task", err
-	}
 	return "", nil
 }
 
@@ -64,6 +41,7 @@ func addTask(args ...string) (string, error) {
 	return "task created", nil
 }
 
+/*
 // Deletes a task with given id
 func deleteTask(args ...string) (string, error) {
 	if len(args) != 1 {
@@ -76,7 +54,7 @@ func deleteTask(args ...string) (string, error) {
         if err = tasks.Remove(id); err != nil {
                 return "", err
         }
-	listTasks("")
+	tasks.Print()
 	return "", nil
 }
 
@@ -95,5 +73,24 @@ func startTask(args ...string) (string, error) {
 		return args[1], ErrInvalidNumericArgument
 	}
 	tasks.StartTimerForTask(id, timeInMinutes)
+	tasks.Print()
 	return "", nil
 }
+
+func setTaskStatus(args ...string) (string, error) {
+	if len(args) != 2 {
+		return "", ErrInvalidArgumentList
+	}
+	id, err := strconv.Atoi(args[0])
+	if err != nil {
+		return args[0], ErrInvalidNumericArgument
+	}
+	status := args[1]
+	_, err = tasks.UpdateStatus(id, status)
+	if err != nil {
+		return "couldn't update task", err
+	}
+	tasks.Print()
+	return "", nil
+}
+*/
