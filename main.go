@@ -2,25 +2,26 @@ package main
 
 import (
 	"github.com/abiosoft/ishell"
-	_ "strconv"
+	 "strconv"
 	_ "time"
 	"errors"
 	tasks "github.com/dlt/selfcontrol/taskscollection"
 )
 
 var ErrInvalidArgumentList = errors.New("invalid argument list")
+var ErrInvalidNumericArgument = errors.New("invalid numeric argument")
 
 func main() {
 	shell := ishell.New()
 	shell.Println("The greatest conquest is self–control")
 
-        listTasks("")
 	shell.Register("list", listTasks)
 	shell.Register("add", addTask)
-	/*shell.Register("delete", deleteTask)
-	shell.Register("status", setTaskStatus)
-	shell.Register("start", startTask)*/
+	shell.Register("delete", deleteTask)
+	shell.Register("update", updateTask)
+	//shell.Register("start", startTask)
 
+	tasks.Print()
 	shell.Start()
 }
 
@@ -41,7 +42,6 @@ func addTask(args ...string) (string, error) {
 	return "task created", nil
 }
 
-/*
 // Deletes a task with given id
 func deleteTask(args ...string) (string, error) {
 	if len(args) != 1 {
@@ -51,13 +51,30 @@ func deleteTask(args ...string) (string, error) {
 	if err != nil {
 		return args[0], ErrInvalidNumericArgument
 	}
-        if err = tasks.Remove(id); err != nil {
-                return "", err
-        }
+        tasks.Delete(id)
 	tasks.Print()
 	return "", nil
 }
 
+func updateTask(args ...string) (string, error) {
+	if len(args) < 2 {
+		return "", ErrInvalidArgumentList
+	}
+
+	id, err := strconv.Atoi(args[0])
+	if err != nil {
+		return args[0], ErrInvalidNumericArgument
+	}
+
+	_, err = tasks.UpdateFields(id, args[1:])
+	if err != nil {
+		return "couldn't update task", err
+	}
+	tasks.Print()
+	return "", nil
+}
+
+/*
 // Starts a timer for a given task id
 func startTask(args ...string) (string, error) {
 	if len(args) != 2 {
@@ -73,23 +90,6 @@ func startTask(args ...string) (string, error) {
 		return args[1], ErrInvalidNumericArgument
 	}
 	tasks.StartTimerForTask(id, timeInMinutes)
-	tasks.Print()
-	return "", nil
-}
-
-func setTaskStatus(args ...string) (string, error) {
-	if len(args) != 2 {
-		return "", ErrInvalidArgumentList
-	}
-	id, err := strconv.Atoi(args[0])
-	if err != nil {
-		return args[0], ErrInvalidNumericArgument
-	}
-	status := args[1]
-	_, err = tasks.UpdateStatus(id, status)
-	if err != nil {
-		return "couldn't update task", err
-	}
 	tasks.Print()
 	return "", nil
 }

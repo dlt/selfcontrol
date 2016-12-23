@@ -2,20 +2,20 @@ package taskscollection
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"errors"
 	"strconv"
 	"github.com/olekukonko/tablewriter"
 	"github.com/HouzuoGuo/tiedot/db"
+	"strings"
 	_ "github.com/HouzuoGuo/tiedot/dberr"
 	_ "io/ioutil"
 	_ "log"
         _ "reflect"
 	_ "time"
-	_ "strings"
 	_ "github.com/deckarep/gosx-notifier"
 	_ "github.com/deckarep/gosx-notifier"
+	_ "fmt"
 )
 
 var (
@@ -41,20 +41,50 @@ func Create(name string) {
 		"name":               name,
 		"status":             "TODO",
 	}
-	docID, err := tasksCollection.Insert(task)
+	_, err := tasksCollection.Insert(task)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Created doc with id: %s", docID)
 }
+
 func Print()  {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"id", "name", "status"})
+	table.SetHeader([]string{"ID", "name", "status"})
+	table.SetAutoFormatHeaders(false)
 	for _, row := range createRows() {
 		table.Append(row)
 	}
 	table.Render()
 }
+
+func Delete(id int) {
+	if err := tasksCollection.Delete(id); err != nil {
+		panic(err)
+	}
+}
+
+func  UpdateFields(taskID int, fieldValuePairs []string) (bool, error) {
+	task, err := tasksCollection.Read(taskID)
+        if err != nil {
+                return false, err
+        }
+
+	for _, pair := range fieldValuePairs {
+		arr := strings.Split(pair, ":")
+		field, value := arr[0], arr[1]
+		if field == "status" {
+			value = strings.ToUpper(value)
+		}
+		task[field] = value
+	}
+
+	err = tasksCollection.Update(taskID, task)
+        if err != nil {
+                return false, err
+        }
+	return true, nil
+}
+
 
 func createRows() [][]string {
 	var rows = [][]string{}
@@ -90,34 +120,6 @@ type taskTimer struct {
 }
 
 timers                    = make(map[int]taskTimer)
-func (tc *TasksCollection) UpdateStatus(taskID int, status string) (bool, error) {
-	task, err := tc.Find(taskID)
-        if err != nil {
-                return false, ErrNoSuchTask
-        }
-	task.Status = strings.ToUpper(status)
-	tc.persist()
-	return true, nil
-}
-
-func (tc *TasksCollection) Remove(id int) error {
-        var newTasks []Task
-        var noSuchTask = true
-	for i := 0; i < len(tc.tasks); i++ {
-		t := tc.tasks[i]
-		if t.ID != id {
-			newTasks = append(newTasks, t)
-		} else {
-                        noSuchTask = false
-                }
-	}
-        if noSuchTask {
-                return ErrNoSuchTask
-        }
-	tc.tasks = newTasks
-        tc.Outdated = true
-        return nil
-}
 
 func (tc *TasksCollection) StartTimerForTask(taskID int, d time.Duration) {
 	task, err := tc.Find(taskID)
