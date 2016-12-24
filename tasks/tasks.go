@@ -6,6 +6,7 @@ import (
 	"github.com/HouzuoGuo/tiedot/db"
 	"github.com/deckarep/gosx-notifier"
 	"github.com/olekukonko/tablewriter"
+	"github.com/fatih/color"
 	"os"
 	"strconv"
 	"strings"
@@ -147,10 +148,22 @@ func createRows() [][]string {
 		row := []string{
 			strconv.Itoa(id),
 			name,
-			status,
+			coloredStatus(status),
 		}
 		rows = append(rows, row)
 		return true
 	})
 	return rows
+}
+
+func coloredStatus(status string) string  {
+	switch status {
+	case "TODO":
+		return color.CyanString(status)
+	case "DOING":
+		return color.YellowString(status)
+	case "DONE":
+		return color.GreenString(status)
+	}
+	return ""
 }
