@@ -3,10 +3,9 @@ package taskscollection
 import (
 	"encoding/json"
 	"errors"
-	_ "fmt"
+	"fmt"
 	"github.com/HouzuoGuo/tiedot/db"
-	_ "github.com/HouzuoGuo/tiedot/dberr"
-	_ "github.com/deckarep/gosx-notifier"
+	"github.com/deckarep/gosx-notifier"
 	"github.com/olekukonko/tablewriter"
 	"os"
 	"strconv"
@@ -14,20 +13,29 @@ import (
 	"time"
 )
 
+const (
+	myDBDir        = "/Users/dlt/.selfcontrol"
+	collectionName = "Tasks"
+)
+
 var (
-	myDBDir         = "/Users/dlt/.selfcontrol"
-	collectionName  = "Tasks"
-	ErrNoSuchTask   = errors.New("no such task")
-	tasksCollection *db.Col
-	timers          = make(map[int]taskTimer)
+	errDuplicateTimerForTask = errors.New("task already has a running timer")
+	tasksCollection          *db.Col
+	timers                   = make(map[int][]*taskTimer)
 )
 
 type Task map[string]interface{}
 
 type taskTimer struct {
-	Timer     *time.Timer
-	StartedAt time.Time
-	Task      *Task
+	Timer      *time.Timer
+	StartedAt  time.Time
+	FinishedAt time.Time
+}
+
+func (tt *taskTimer) notify(message string) {
+	pushNotification(message)
+	tt.FinishedAt = time.Now()
+	fmt.Printf("taskTimer: %s", tt)
 }
 
 func init() {
@@ -87,22 +95,41 @@ func UpdateFields(taskID int, fieldValuePairs []string) (bool, error) {
 	return true, nil
 }
 
-func StartTimerForTask(taskID int, d time.Duration) {
+func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 	task, err := tasksCollection.Read(taskID)
 	if err != nil {
 		panic(err)
 	}
-	timer := time.NewTimer(d)
-	timers[task.ID] = taskTimer{
-		Task:      task,
-		Timer:     timer,
-		StartedAt: time.Now(),
+
+	if hasRunningTimer(taskID) {
+		return false, errDuplicateTimerForTask
 	}
-	message := "Timer for '" + task.Name + "' finished!"
+
+	name := task["name"].(string)
+	timer := time.NewTimer(d)
+	message := "Timer for '" + name + "' finished!"
+	taskTimer := &taskTimer{timer, time.Now(), time.Time{}}
+
+	timers[taskID] = append(timers[taskID], taskTimer)
+
 	go func() {
 		<-timer.C
-		pushNotification(message)
+		taskTimer.notify(message)
 	}()
+
+	return true, nil
+}
+
+func hasRunningTimer(taskID int) bool {
+	zeroedTime := time.Time{}
+	for _, timer := range timers[taskID] {
+		fmt.Println("foo")
+		if timer.FinishedAt == zeroedTime {
+			fmt.Printf("timer: %s", timer)
+			return true
+		}
+	}
+	return false
 }
 
 func pushNotification(message string) {
@@ -125,13 +152,4 @@ func createRows() [][]string {
 		return true
 	})
 	return rows
-}
-
-func ellapsedTime(t Task) string {
-	timer := timers[t.ID]
-	seconds := time.Now().Sub(timer.StartedAt).Seconds()
-	if t.Status != "DOING" {
-		return "-"
-	}
-	return strconv.FormatFloat(seconds, 'E', -1, 32)
 }

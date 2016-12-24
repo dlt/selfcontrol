@@ -5,7 +5,7 @@ import (
 	"github.com/abiosoft/ishell"
 	tasks "github.com/dlt/selfcontrol/taskscollection"
 	"strconv"
-	_ "time"
+	"time"
 )
 
 var ErrInvalidArgumentList = errors.New("invalid argument list")
@@ -19,7 +19,7 @@ func main() {
 	shell.Register("add", addTask)
 	shell.Register("delete", deleteTask)
 	shell.Register("update", updateTask)
-	//shell.Register("start", startTask)
+	shell.Register("timer", addTimerForTask)
 
 	tasks.Print()
 	shell.Start()
@@ -74,12 +74,12 @@ func updateTask(args ...string) (string, error) {
 	return "", nil
 }
 
-/*
-// Starts a timer for a given task id
-func startTask(args ...string) (string, error) {
+// Adds a timer for a given task id
+func addTimerForTask(args ...string) (string, error) {
 	if len(args) != 2 {
 		return "", ErrInvalidArgumentList
 	}
+
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
 		return args[0], ErrInvalidNumericArgument
@@ -89,8 +89,13 @@ func startTask(args ...string) (string, error) {
 	if err != nil {
 		return args[1], ErrInvalidNumericArgument
 	}
-	tasks.StartTimerForTask(id, timeInMinutes)
+
+	_, err = tasks.AddTimerForTask(id, timeInMinutes)
+	if err != nil {
+		return "", err
+
+	}
+
 	tasks.Print()
 	return "", nil
 }
-*/
