@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-var ErrInvalidArgumentList = errors.New("invalid argument list")
-var ErrInvalidNumericArgument = errors.New("invalid numeric argument")
+var errInvalidArgumentList = errors.New("invalid argument list")
+var errInvalidNumericArgument = errors.New("invalid numeric argument")
 
 func main() {
 	shell := ishell.New()
@@ -25,16 +25,14 @@ func main() {
 	shell.Start()
 }
 
-// Print all tasks in a ASCII table
 func listTasks(args ...string) (string, error) {
 	tasks.Print()
 	return "", nil
 }
 
-// Creates a new task given name and status
 func addTask(args ...string) (string, error) {
 	if len(args) != 1 {
-		return "", ErrInvalidArgumentList
+		return "", errInvalidArgumentList
 	}
 	name := args[0]
 	tasks.Create(name)
@@ -42,14 +40,13 @@ func addTask(args ...string) (string, error) {
 	return "task created", nil
 }
 
-// Deletes a task with given id
 func deleteTask(args ...string) (string, error) {
 	if len(args) != 1 {
-		return "", ErrInvalidArgumentList
+		return "", errInvalidArgumentList
 	}
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
-		return args[0], ErrInvalidNumericArgument
+		return args[0], errInvalidNumericArgument
 	}
 	tasks.Delete(id)
 	tasks.Print()
@@ -58,12 +55,12 @@ func deleteTask(args ...string) (string, error) {
 
 func updateTask(args ...string) (string, error) {
 	if len(args) < 2 {
-		return "", ErrInvalidArgumentList
+		return "", errInvalidArgumentList
 	}
 
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
-		return args[0], ErrInvalidNumericArgument
+		return args[0], errInvalidNumericArgument
 	}
 
 	_, err = tasks.UpdateFields(id, args[1:])
@@ -74,20 +71,19 @@ func updateTask(args ...string) (string, error) {
 	return "", nil
 }
 
-// Adds a timer for a given task id
 func addTimerForTask(args ...string) (string, error) {
 	if len(args) != 2 {
-		return "", ErrInvalidArgumentList
+		return "", errInvalidArgumentList
 	}
 
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
-		return args[0], ErrInvalidNumericArgument
+		return args[0], errInvalidNumericArgument
 	}
 
 	timeInMinutes, err := time.ParseDuration(args[1] + "s")
 	if err != nil {
-		return args[1], ErrInvalidNumericArgument
+		return args[1], errInvalidNumericArgument
 	}
 
 	_, err = tasks.AddTimerForTask(id, timeInMinutes)

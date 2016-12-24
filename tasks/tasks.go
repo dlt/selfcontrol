@@ -3,7 +3,6 @@ package tasks
 import (
 	"encoding/json"
 	"errors"
-	_ "fmt"
 	"github.com/HouzuoGuo/tiedot/db"
 	"github.com/deckarep/gosx-notifier"
 	"github.com/olekukonko/tablewriter"
@@ -24,7 +23,7 @@ var (
 	timers                   = make(map[int][]*taskTimer)
 )
 
-type Task map[string]interface{}
+type task map[string]interface{}
 
 type taskTimer struct {
 	Timer      *time.Timer
@@ -46,6 +45,7 @@ func init() {
 	tasksCollection = tasksDB.Use(collectionName)
 }
 
+// Create a new task given its name
 func Create(name string) {
 	task := map[string]interface{}{
 		"name":   name,
@@ -57,6 +57,7 @@ func Create(name string) {
 	}
 }
 
+// Print all tasks in a ASCII table
 func Print() {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"ID", "name", "status"})
@@ -67,12 +68,14 @@ func Print() {
 	table.Render()
 }
 
+// Delete a task with given id
 func Delete(id int) {
 	if err := tasksCollection.Delete(id); err != nil {
 		panic(err)
 	}
 }
 
+// UpdateFields updates the tasks attributes
 func UpdateFields(taskID int, fieldValuePairs []string) (bool, error) {
 	task, err := tasksCollection.Read(taskID)
 	if err != nil {
@@ -94,6 +97,7 @@ func UpdateFields(taskID int, fieldValuePairs []string) (bool, error) {
 	return true, nil
 }
 
+// AddTimerForTask adds a timer for a given task id and duration
 func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 	task, err := tasksCollection.Read(taskID)
 	if err != nil {
@@ -136,7 +140,7 @@ func pushNotification(message string) {
 func createRows() [][]string {
 	var rows = [][]string{}
 	tasksCollection.ForEachDoc(func(id int, raw []byte) (willMoveOn bool) {
-		var doc Task
+		var doc task
 		json.Unmarshal(raw, &doc)
 		name := doc["name"].(string)
 		status := doc["status"].(string)
