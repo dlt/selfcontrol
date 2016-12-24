@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/abiosoft/ishell"
-	tasks "github.com/dlt/selfcontrol/taskscollection"
+	"github.com/dlt/selfcontrol/tasks"
 	"strconv"
 	"time"
 )
@@ -93,7 +93,6 @@ func addTimerForTask(args ...string) (string, error) {
 	_, err = tasks.AddTimerForTask(id, timeInMinutes)
 	if err != nil {
 		return "", err
-
 	}
 
 	tasks.Print()

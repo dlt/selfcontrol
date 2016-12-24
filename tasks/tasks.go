@@ -1,9 +1,9 @@
-package taskscollection
+package tasks
 
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+	_ "fmt"
 	"github.com/HouzuoGuo/tiedot/db"
 	"github.com/deckarep/gosx-notifier"
 	"github.com/olekukonko/tablewriter"
@@ -35,7 +35,6 @@ type taskTimer struct {
 func (tt *taskTimer) notify(message string) {
 	pushNotification(message)
 	tt.FinishedAt = time.Now()
-	fmt.Printf("taskTimer: %s", tt)
 }
 
 func init() {
@@ -123,9 +122,7 @@ func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 func hasRunningTimer(taskID int) bool {
 	zeroedTime := time.Time{}
 	for _, timer := range timers[taskID] {
-		fmt.Println("foo")
 		if timer.FinishedAt == zeroedTime {
-			fmt.Printf("timer: %s", timer)
 			return true
 		}
 	}
