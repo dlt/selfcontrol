@@ -37,6 +37,21 @@ func (tt *taskTimer) notify(message string) {
 	tt.FinishedAt = time.Now()
 }
 
+func (tt *taskTimer) ellapsedTime() time.Duration {
+	var finishedAt time.Time
+	if tt.unfinished() {
+		finishedAt = time.Now()
+	} else {
+		finishedAt = tt.FinishedAt
+	}
+	return finishedAt.Sub(tt.StartedAt)
+}
+
+func (timer *taskTimer) unfinished() bool {
+	zeroedTime := time.Time{}
+	return timer.FinishedAt == zeroedTime
+}
+
 func init() {
 	tasksDB, err := db.OpenDB(myDBDir)
 	if err != nil {
@@ -61,7 +76,7 @@ func Create(name string) {
 // Print all tasks in a ASCII table
 func Print() {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"ID", "name", "status"})
+	table.SetHeader([]string{"ID", "name", "status", "total time"})
 	table.SetAutoFormatHeaders(false)
 	for _, row := range createRows() {
 		table.Append(row)
@@ -82,7 +97,6 @@ func UpdateFields(taskID int, fieldValuePairs []string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-
 	for _, pair := range fieldValuePairs {
 		arr := strings.Split(pair, ":")
 		field, value := arr[0], arr[1]
@@ -91,7 +105,6 @@ func UpdateFields(taskID int, fieldValuePairs []string) (bool, error) {
 		}
 		task[field] = value
 	}
-
 	if err = tasksCollection.Update(taskID, task); err != nil {
 		return false, err
 	}
@@ -119,15 +132,14 @@ func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 	go func() {
 		<-timer.C
 		taskTimer.notify(message)
+		Print()
 	}()
-
 	return true, nil
 }
 
 func hasRunningTimer(taskID int) bool {
-	zeroedTime := time.Time{}
 	for _, timer := range timers[taskID] {
-		if timer.FinishedAt == zeroedTime {
+		if  timer.unfinished() {
 			return true
 		}
 	}
@@ -149,11 +161,20 @@ func createRows() [][]string {
 			strconv.Itoa(id),
 			name,
 			coloredStatus(status),
+			totalRunningTime(id).String(),
 		}
 		rows = append(rows, row)
 		return true
 	})
 	return rows
+}
+
+func totalRunningTime(taskID int) time.Duration {
+	total := time.Duration(0)
+	for _, timer := range timers[taskID] {
+		total += timer.ellapsedTime()
+	}
+	return total
 }
 
 func coloredStatus(status string) string  {

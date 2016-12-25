@@ -20,6 +20,7 @@ func main() {
 	shell.Register("delete", deleteTask)
 	shell.Register("update", updateTask)
 	shell.Register("timer", addTimerForTask)
+	//shell.Register("exit", exit)
 
 	tasks.Print()
 	shell.Start()
@@ -29,6 +30,7 @@ func listTasks(args ...string) (string, error) {
 	tasks.Print()
 	return "", nil
 }
+
 
 func addTask(args ...string) (string, error) {
 	if len(args) != 1 {
