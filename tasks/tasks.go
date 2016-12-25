@@ -10,26 +10,28 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"fmt"
 	"time"
 )
 
-const (
-	myDBDir        = "/Users/dlt/.selfcontrol"
-	collectionName = "Tasks"
-)
+const myDBDir = "/Users/dlt/.selfcontrol"
 
 var (
 	errDuplicateTimerForTask = errors.New("task already has a running timer")
-	tasksCollection          *db.Col
-	timers                   = make(map[int][]*taskTimer)
+	tasksCollection            *db.Col
+	timersCollection           *db.Col
+	DB           		   *db.DB
+	timers map[int][]*taskTimer
 )
 
 type task map[string]interface{}
 
 type taskTimer struct {
-	Timer      *time.Timer
-	StartedAt  time.Time
-	FinishedAt time.Time
+	Timer        *time.Timer
+	StartedAt    time.Time
+	FinishedAt   time.Time
+	EllapsedTime time.Duration
+	Fired        bool
 }
 
 func (tt *taskTimer) notify(message string) {
@@ -38,6 +40,10 @@ func (tt *taskTimer) notify(message string) {
 }
 
 func (tt *taskTimer) ellapsedTime() time.Duration {
+	if tt.Fired {
+		return tt.EllapsedTime
+	}
+
 	var finishedAt time.Time
 	if tt.unfinished() {
 		finishedAt = time.Now()
@@ -48,17 +54,83 @@ func (tt *taskTimer) ellapsedTime() time.Duration {
 }
 
 func (timer *taskTimer) unfinished() bool {
-	zeroedTime := time.Time{}
-	return timer.FinishedAt == zeroedTime
+	return !timer.Fired
 }
 
 func init() {
-	tasksDB, err := db.OpenDB(myDBDir)
+	d, err := db.OpenDB(myDBDir)
+	DB = d
 	if err != nil {
 		panic(err)
 	}
-	tasksDB.Create(collectionName)
-	tasksCollection = tasksDB.Use(collectionName)
+	DB.Create("Tasks")
+	DB.Create("Timers")
+	tasksCollection = DB.Use("Tasks")
+	timersCollection = DB.Use("Timers")
+	loadTimers()
+}
+
+func loadTimers()  {
+	timers = make(map[int][]*taskTimer)
+	if timersCollection.ApproxDocCount() == 0 {
+		return
+	}
+	firstTimer := readFirstTimer()["EllapsedTimes"].(map[string][]time.Duration)
+	for tid, ellapsedTimes := range firstTimer {
+		taskID, _ := strconv.Atoi(tid)
+		if timers[taskID] == nil {
+			timers[taskID] = make([]*taskTimer, 0)
+		}
+		for _, e := range ellapsedTimes {
+			timer := &taskTimer{
+				Fired: true,
+				EllapsedTime: time.Duration(e),
+			}
+			timers[taskID] = append(timers[taskID], timer)
+		}
+	}
+}
+
+func readFirstTimer() map[string]interface{} {
+	var rawDoc []byte
+	timersCollection.ForEachDoc(func(id int, raw []byte) (willMoveOn bool) {
+		rawDoc = raw
+		return false
+	})
+	var doc map[string]interface{}
+	json.Unmarshal(rawDoc, &doc)
+	return doc
+}
+
+func Save()  {
+	ellapsedTimes := make(map[string][]time.Duration)
+	for tid, taskTimers := range timers {
+		taskID := strconv.Itoa(tid)
+		for _, timer := range taskTimers {
+			if ellapsedTimes[taskID] == nil {
+				ellapsedTimes[taskID] = make([]time.Duration, 0)
+			}
+			ellapsedTimes[taskID] = append(ellapsedTimes[taskID], timer.ellapsedTime())
+		}
+	}
+	timersDoc := map[string]interface{}{
+		"EllapsedTimes": ellapsedTimes,
+	}
+	fmt.Println(timersDoc)
+	_, err := updateTimers(timersDoc)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func updateTimers(timersDoc map[string]interface{}) (bool, error) {
+	DB.Truncate("Timers")
+	timersCollection.Insert(timersDoc)
+	_, err := timersCollection.Insert(timersDoc)
+	if err != nil {
+		panic(err)
+	}
+	return true, err
 }
 
 // Create a new task given its name
@@ -125,13 +197,23 @@ func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 	name := task["name"].(string)
 	timer := time.NewTimer(d)
 	message := "Timer for '" + name + "' finished!"
-	taskTimer := &taskTimer{timer, time.Now(), time.Time{}}
+	tTimer := &taskTimer{
+		Timer: timer,
+		StartedAt: time.Now(),
+		FinishedAt: time.Time{},
+	}
 
-	timers[taskID] = append(timers[taskID], taskTimer)
+	if timers[taskID] == nil {
+		timers[taskID] = make([]*taskTimer, 0)
+	}
+
+	timers[taskID] = append(timers[taskID], tTimer)
 
 	go func() {
 		<-timer.C
-		taskTimer.notify(message)
+		tTimer.notify(message)
+		tTimer.Fired = true
+		Save()
 		Print()
 	}()
 	return true, nil

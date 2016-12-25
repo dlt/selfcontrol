@@ -10,9 +10,9 @@ import (
 
 var errInvalidArgumentList = errors.New("invalid argument list")
 var errInvalidNumericArgument = errors.New("invalid numeric argument")
+var shell = ishell.New()
 
 func main() {
-	shell := ishell.New()
 	shell.Println("The greatest conquest is self–control")
 
 	shell.Register("list", listTasks)
@@ -20,7 +20,7 @@ func main() {
 	shell.Register("delete", deleteTask)
 	shell.Register("update", updateTask)
 	shell.Register("timer", addTimerForTask)
-	//shell.Register("exit", exit)
+	shell.Register("exit", exit)
 
 	tasks.Print()
 	shell.Start()
@@ -31,6 +31,11 @@ func listTasks(args ...string) (string, error) {
 	return "", nil
 }
 
+func exit(args ...string) (string, error) {
+	tasks.Save()
+	shell.Stop()
+	return "", nil
+}
 
 func addTask(args ...string) (string, error) {
 	if len(args) != 1 {
