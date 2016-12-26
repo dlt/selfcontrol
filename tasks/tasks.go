@@ -3,14 +3,14 @@ package tasks
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/HouzuoGuo/tiedot/db"
 	"github.com/deckarep/gosx-notifier"
-	"github.com/olekukonko/tablewriter"
 	"github.com/fatih/color"
+	"github.com/olekukonko/tablewriter"
 	"os"
 	"strconv"
 	"strings"
-	"fmt"
 	"time"
 )
 
@@ -18,15 +18,16 @@ const myDBDir = "/Users/dlt/.selfcontrol"
 
 var (
 	errDuplicateTimerForTask = errors.New("task already has a running timer")
-	tasksCollection            *db.Col
-	timersCollection           *db.Col
-	DB           		   *db.DB
-	timers map[int][]*taskTimer
+	tasksCollection          *db.Col
+	timersCollection         *db.Col
+	DB                       *db.DB
+	timers                   map[int][]*taskTimer
 )
 
 type task map[string]interface{}
 
 type taskTimer struct {
+	TaskID       int
 	Timer        *time.Timer
 	StartedAt    time.Time
 	FinishedAt   time.Time
@@ -70,67 +71,48 @@ func init() {
 	loadTimers()
 }
 
-func loadTimers()  {
+func loadTimers() {
 	timers = make(map[int][]*taskTimer)
-	if timersCollection.ApproxDocCount() == 0 {
-		return
-	}
-	firstTimer := readFirstTimer()["EllapsedTimes"].(map[string][]time.Duration)
-	for tid, ellapsedTimes := range firstTimer {
-		taskID, _ := strconv.Atoi(tid)
-		if timers[taskID] == nil {
-			timers[taskID] = make([]*taskTimer, 0)
-		}
-		for _, e := range ellapsedTimes {
-			timer := &taskTimer{
-				Fired: true,
-				EllapsedTime: time.Duration(e),
-			}
-			timers[taskID] = append(timers[taskID], timer)
-		}
-	}
-}
-
-func readFirstTimer() map[string]interface{} {
-	var rawDoc []byte
 	timersCollection.ForEachDoc(func(id int, raw []byte) (willMoveOn bool) {
-		rawDoc = raw
-		return false
+		var doc map[string]interface{}
+		json.Unmarshal(raw, &doc)
+		startedAt, err := time.Parse(time.RFC3339, doc["StartedAt"].(string))
+		if err != nil {
+			panic(err)
+		}
+		finishedAt, err := time.Parse(time.RFC3339, doc["FinishedAt"].(string))
+		if err != nil {
+			panic(err)
+		}
+		timer := &taskTimer{
+			TaskID:       id,
+			Fired:        doc["Fired"].(bool),
+			EllapsedTime: time.Duration(doc["EllapsedTime"].(float64)),
+			StartedAt:    startedAt,
+			FinishedAt:   finishedAt,
+		}
+		timers[id] = append(timers[id], timer)
+		fmt.Println(timer)
+		return true
 	})
-	var doc map[string]interface{}
-	json.Unmarshal(rawDoc, &doc)
-	return doc
 }
 
-func Save()  {
-	ellapsedTimes := make(map[string][]time.Duration)
-	for tid, taskTimers := range timers {
-		taskID := strconv.Itoa(tid)
+func Save() {
+	for taskID, taskTimers := range timers {
 		for _, timer := range taskTimers {
-			if ellapsedTimes[taskID] == nil {
-				ellapsedTimes[taskID] = make([]time.Duration, 0)
+			timersDoc := map[string]interface{}{
+				"TaskID":       string(taskID),
+				"Fired":        timer.Fired,
+				"EllapsedTime": timer.EllapsedTime,
+				"StartedAt":    timer.StartedAt,
+				"FinishedAt":   timer.FinishedAt,
 			}
-			ellapsedTimes[taskID] = append(ellapsedTimes[taskID], timer.ellapsedTime())
+			_, err := timersCollection.Insert(timersDoc)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
-	timersDoc := map[string]interface{}{
-		"EllapsedTimes": ellapsedTimes,
-	}
-	fmt.Println(timersDoc)
-	_, err := updateTimers(timersDoc)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func updateTimers(timersDoc map[string]interface{}) (bool, error) {
-	DB.Truncate("Timers")
-	timersCollection.Insert(timersDoc)
-	_, err := timersCollection.Insert(timersDoc)
-	if err != nil {
-		panic(err)
-	}
-	return true, err
 }
 
 // Create a new task given its name
@@ -198,8 +180,9 @@ func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 	timer := time.NewTimer(d)
 	message := "Timer for '" + name + "' finished!"
 	tTimer := &taskTimer{
-		Timer: timer,
-		StartedAt: time.Now(),
+		TaskID:     taskID,
+		Timer:      timer,
+		StartedAt:  time.Now(),
 		FinishedAt: time.Time{},
 	}
 
@@ -221,7 +204,7 @@ func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 
 func hasRunningTimer(taskID int) bool {
 	for _, timer := range timers[taskID] {
-		if  timer.unfinished() {
+		if timer.unfinished() {
 			return true
 		}
 	}
@@ -252,6 +235,7 @@ func createRows() [][]string {
 }
 
 func totalRunningTime(taskID int) time.Duration {
+	loadTimers()
 	total := time.Duration(0)
 	for _, timer := range timers[taskID] {
 		total += timer.ellapsedTime()
@@ -259,7 +243,7 @@ func totalRunningTime(taskID int) time.Duration {
 	return total
 }
 
-func coloredStatus(status string) string  {
+func coloredStatus(status string) string {
 	switch status {
 	case "TODO":
 		return color.CyanString(status)
