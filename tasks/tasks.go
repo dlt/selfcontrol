@@ -31,20 +31,17 @@ type taskTimer struct {
 	Timer        *time.Timer
 	StartedAt    time.Time
 	FinishedAt   time.Time
-	EllapsedTime time.Duration
+	Message      string
 	Fired        bool
 }
 
-func (tt *taskTimer) notify(message string) {
-	pushNotification(message)
+func (tt *taskTimer) trigger() {
+	pushNotification(tt.Message)
 	tt.FinishedAt = time.Now()
+	tt.Fired = true
 }
 
 func (tt *taskTimer) ellapsedTime() time.Duration {
-	if tt.Fired {
-		return tt.EllapsedTime
-	}
-
 	var finishedAt time.Time
 	if tt.unfinished() {
 		finishedAt = time.Now()
@@ -87,7 +84,6 @@ func loadTimers() {
 		timer := &taskTimer{
 			TaskID:       id,
 			Fired:        doc["Fired"].(bool),
-			EllapsedTime: time.Duration(doc["EllapsedTime"].(float64)),
 			StartedAt:    startedAt,
 			FinishedAt:   finishedAt,
 		}
@@ -103,7 +99,7 @@ func Save() {
 			timersDoc := map[string]interface{}{
 				"TaskID":       string(taskID),
 				"Fired":        timer.Fired,
-				"EllapsedTime": timer.EllapsedTime,
+				"Message": 	timer.Message,
 				"StartedAt":    timer.StartedAt,
 				"FinishedAt":   timer.FinishedAt,
 			}
@@ -182,6 +178,7 @@ func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 	tTimer := &taskTimer{
 		TaskID:     taskID,
 		Timer:      timer,
+		Message:    message,
 		StartedAt:  time.Now(),
 		FinishedAt: time.Time{},
 	}
@@ -194,8 +191,7 @@ func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 
 	go func() {
 		<-timer.C
-		tTimer.notify(message)
-		tTimer.Fired = true
+		tTimer.trigger()
 		Save()
 		Print()
 	}()
