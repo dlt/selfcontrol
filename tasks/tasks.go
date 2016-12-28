@@ -27,13 +27,13 @@ var (
 type task map[string]interface{}
 
 type taskTimer struct {
-	TaskID       int
-	Timer        *time.Timer
-	StartedAt    time.Time
-	FinishedAt   time.Time
-	Message      string
-	Fired        bool
-	Persisted    bool
+	TaskID     int
+	Timer      *time.Timer
+	StartedAt  time.Time
+	FinishedAt time.Time
+	Message    string
+	Fired      bool
+	Persisted  bool
 }
 
 func (tt *taskTimer) trigger() {
@@ -60,25 +60,15 @@ func (timer *taskTimer) unfinished() bool {
 
 func (timer *taskTimer) save() {
 	timersDoc := map[string]interface{}{
-		"TaskID":       string(timer.TaskID),
-		"Fired":        timer.Fired,
-		"Message": 	timer.Message,
-		"StartedAt":    timer.StartedAt,
-		"FinishedAt":   timer.FinishedAt,
+		"TaskID":     string(timer.TaskID),
+		"Fired":      timer.Fired,
+		"Message":    timer.Message,
+		"StartedAt":  timer.StartedAt,
+		"FinishedAt": timer.FinishedAt,
 	}
 	_, err := timersCollection.Insert(timersDoc)
 	if err != nil {
 		panic(err)
-	}
-}
-
-func Save()  {
-	for _, taskTimers := range timers {
-		for _, timer := range taskTimers {
-			if !timer.Persisted {
-				timer.save()
-			}
-		}
 	}
 }
 
@@ -109,10 +99,10 @@ func loadTimers() {
 			panic(err)
 		}
 		timer := &taskTimer{
-			TaskID:       id,
-			Fired:        doc["Fired"].(bool),
-			StartedAt:    startedAt,
-			FinishedAt:   finishedAt,
+			TaskID:     id,
+			Fired:      doc["Fired"].(bool),
+			StartedAt:  startedAt,
+			FinishedAt: finishedAt,
 		}
 		timers[id] = append(timers[id], timer)
 		return true
@@ -203,6 +193,17 @@ func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 		Print()
 	}()
 	return true, nil
+}
+
+// Save saves unpersisted timers upon console exit
+func Save() {
+	for _, taskTimers := range timers {
+		for _, timer := range taskTimers {
+			if !timer.Persisted {
+				timer.save()
+			}
+		}
+	}
 }
 
 func hasRunningTimer(taskID int) bool {
