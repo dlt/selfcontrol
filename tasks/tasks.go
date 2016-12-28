@@ -3,7 +3,7 @@ package tasks
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+	_ "fmt"
 	"github.com/HouzuoGuo/tiedot/db"
 	"github.com/deckarep/gosx-notifier"
 	"github.com/fatih/color"
@@ -33,12 +33,15 @@ type taskTimer struct {
 	FinishedAt   time.Time
 	Message      string
 	Fired        bool
+	Persisted    bool
 }
 
 func (tt *taskTimer) trigger() {
 	pushNotification(tt.Message)
 	tt.FinishedAt = time.Now()
 	tt.Fired = true
+	tt.Persisted = true
+	tt.save()
 }
 
 func (tt *taskTimer) ellapsedTime() time.Duration {
@@ -53,6 +56,30 @@ func (tt *taskTimer) ellapsedTime() time.Duration {
 
 func (timer *taskTimer) unfinished() bool {
 	return !timer.Fired
+}
+
+func (timer *taskTimer) save() {
+	timersDoc := map[string]interface{}{
+		"TaskID":       string(timer.TaskID),
+		"Fired":        timer.Fired,
+		"Message": 	timer.Message,
+		"StartedAt":    timer.StartedAt,
+		"FinishedAt":   timer.FinishedAt,
+	}
+	_, err := timersCollection.Insert(timersDoc)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func Save()  {
+	for _, taskTimers := range timers {
+		for _, timer := range taskTimers {
+			if !timer.Persisted {
+				timer.save()
+			}
+		}
+	}
 }
 
 func init() {
@@ -88,12 +115,9 @@ func loadTimers() {
 			FinishedAt:   finishedAt,
 		}
 		timers[id] = append(timers[id], timer)
-		fmt.Println(timer)
 		return true
 	})
 }
-
-
 
 // Create a new task given its name
 func Create(name string) {
@@ -176,29 +200,9 @@ func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 	go func() {
 		<-timer.C
 		tTimer.trigger()
-		Save()
 		Print()
 	}()
 	return true, nil
-}
-
-func Save() {
-	for taskID, taskTimers := range timers {
-	fmt.Println("Saving timers for taskid: " + string(taskID))
-		for _, timer := range taskTimers {
-			timersDoc := map[string]interface{}{
-				"TaskID":       string(taskID),
-				"Fired":        timer.Fired,
-				"Message": 	timer.Message,
-				"StartedAt":    timer.StartedAt,
-				"FinishedAt":   timer.FinishedAt,
-			}
-			_, err := timersCollection.Insert(timersDoc)
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
 }
 
 func hasRunningTimer(taskID int) bool {
