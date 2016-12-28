@@ -65,11 +65,11 @@ func init() {
 	DB.Create("Timers")
 	tasksCollection = DB.Use("Tasks")
 	timersCollection = DB.Use("Timers")
+	timers = make(map[int][]*taskTimer)
 	loadTimers()
 }
 
 func loadTimers() {
-	timers = make(map[int][]*taskTimer)
 	timersCollection.ForEachDoc(func(id int, raw []byte) (willMoveOn bool) {
 		var doc map[string]interface{}
 		json.Unmarshal(raw, &doc)
@@ -93,23 +93,7 @@ func loadTimers() {
 	})
 }
 
-func Save() {
-	for taskID, taskTimers := range timers {
-		for _, timer := range taskTimers {
-			timersDoc := map[string]interface{}{
-				"TaskID":       string(taskID),
-				"Fired":        timer.Fired,
-				"Message": 	timer.Message,
-				"StartedAt":    timer.StartedAt,
-				"FinishedAt":   timer.FinishedAt,
-			}
-			_, err := timersCollection.Insert(timersDoc)
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
-}
+
 
 // Create a new task given its name
 func Create(name string) {
@@ -196,6 +180,25 @@ func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 		Print()
 	}()
 	return true, nil
+}
+
+func Save() {
+	for taskID, taskTimers := range timers {
+	fmt.Println("Saving timers for taskid: " + string(taskID))
+		for _, timer := range taskTimers {
+			timersDoc := map[string]interface{}{
+				"TaskID":       string(taskID),
+				"Fired":        timer.Fired,
+				"Message": 	timer.Message,
+				"StartedAt":    timer.StartedAt,
+				"FinishedAt":   timer.FinishedAt,
+			}
+			_, err := timersCollection.Insert(timersDoc)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
 }
 
 func hasRunningTimer(taskID int) bool {
