@@ -3,7 +3,7 @@ package tasks
 import (
 	"encoding/json"
 	"errors"
-	_ "fmt"
+	 "fmt"
 	"github.com/HouzuoGuo/tiedot/db"
 	"github.com/deckarep/gosx-notifier"
 	"github.com/fatih/color"
@@ -21,7 +21,7 @@ var (
 	tasksCollection          *db.Col
 	timersCollection         *db.Col
 	DB                       *db.DB
-	timers                   map[int][]*taskTimer
+	ticker 			 chan time.Time
 )
 
 type task map[string]interface{}
@@ -30,17 +30,14 @@ type taskTimer struct {
 	TaskID     int
 	Timer      *time.Timer
 	StartedAt  time.Time
-	FinishedAt time.Time
+	ExpiresAt time.Time
 	Message    string
 	Fired      bool
-	Persisted  bool
 }
 
 func (tt *taskTimer) trigger() {
 	pushNotification(tt.Message)
-	tt.FinishedAt = time.Now()
 	tt.Fired = true
-	tt.Persisted = true
 	tt.save()
 }
 
@@ -49,7 +46,7 @@ func (tt *taskTimer) ellapsedTime() time.Duration {
 	if tt.unfinished() {
 		finishedAt = time.Now()
 	} else {
-		finishedAt = tt.FinishedAt
+		finishedAt = tt.ExpiresAt
 	}
 	return finishedAt.Sub(tt.StartedAt)
 }
@@ -60,11 +57,11 @@ func (timer *taskTimer) unfinished() bool {
 
 func (timer *taskTimer) save() {
 	timersDoc := map[string]interface{}{
-		"TaskID":     string(timer.TaskID),
+		"TaskID":     timer.TaskID,
 		"Fired":      timer.Fired,
 		"Message":    timer.Message,
 		"StartedAt":  timer.StartedAt,
-		"FinishedAt": timer.FinishedAt,
+		"ExpiresAt":  timer.ExpiresAt,
 	}
 	_, err := timersCollection.Insert(timersDoc)
 	if err != nil {
@@ -82,11 +79,18 @@ func init() {
 	DB.Create("Timers")
 	tasksCollection = DB.Use("Tasks")
 	timersCollection = DB.Use("Timers")
-	timers = make(map[int][]*taskTimer)
-	loadTimers()
+	startTimersLoop()
+}
+
+func startTimersLoop()  {
+    ticker = time.Tick(1 * time.Second)
+    for now := range ticker {
+	    fmt.Println("it works")
+    }
 }
 
 func loadTimers() {
+	timers = make(map[int][]*taskTimer)
 	timersCollection.ForEachDoc(func(id int, raw []byte) (willMoveOn bool) {
 		var doc map[string]interface{}
 		json.Unmarshal(raw, &doc)
@@ -94,17 +98,19 @@ func loadTimers() {
 		if err != nil {
 			panic(err)
 		}
-		finishedAt, err := time.Parse(time.RFC3339, doc["FinishedAt"].(string))
+		expiresAt, err := time.Parse(time.RFC3339, doc["ExpiresAt"].(string))
 		if err != nil {
 			panic(err)
 		}
+		taskID := int(doc["TaskID"].(float64))
 		timer := &taskTimer{
-			TaskID:     id,
+			TaskID:     taskID,
 			Fired:      doc["Fired"].(bool),
 			StartedAt:  startedAt,
-			FinishedAt: finishedAt,
+			ExpiresAt:  expiresAt,
+			Persisted:  true,
 		}
-		timers[id] = append(timers[id], timer)
+		timers[shortID(taskID)] = append(timers[shortID(taskID)], timer)
 		return true
 	})
 }
@@ -178,14 +184,15 @@ func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 		Timer:      timer,
 		Message:    message,
 		StartedAt:  time.Now(),
-		FinishedAt: time.Time{},
+		ExpiresAt: time.Time{},
 	}
 
-	if timers[taskID] == nil {
-		timers[taskID] = make([]*taskTimer, 0)
+	tid := shortID(taskID)
+	if timers[tid] == nil {
+		timers[tid] = make([]*taskTimer, 0)
 	}
 
-	timers[taskID] = append(timers[taskID], tTimer)
+	timers[tid] = append(timers[tid], tTimer)
 
 	go func() {
 		<-timer.C
@@ -220,6 +227,8 @@ func pushNotification(message string) {
 }
 
 func createRows() [][]string {
+	loadTimers()
+
 	var rows = [][]string{}
 	tasksCollection.ForEachDoc(func(id int, raw []byte) (willMoveOn bool) {
 		var doc task
@@ -238,10 +247,15 @@ func createRows() [][]string {
 	return rows
 }
 
+func shortID(id int) int {
+	str := strconv.Itoa(id)
+	i, _ := strconv.Atoi(str[0:4])
+	return i
+}
+
 func totalRunningTime(taskID int) time.Duration {
-	loadTimers()
 	total := time.Duration(0)
-	for _, timer := range timers[taskID] {
+	for _, timer := range timers[shortID(taskID)] {
 		total += timer.ellapsedTime()
 	}
 	return total
