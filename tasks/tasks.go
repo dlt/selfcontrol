@@ -2,14 +2,15 @@ package tasks
 
 import (
 	"errors"
-	_ "fmt"
+	"fmt"
 	"github.com/asdine/storm"
+	"github.com/asdine/storm/q"
 	"github.com/deckarep/gosx-notifier"
 	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
 	"os"
 	"strconv"
-	_ "strings"
+	"strings"
 	"time"
 )
 
@@ -23,6 +24,15 @@ type task struct {
 	ID     int    `storm:"id,increment"`
 	Name   string `storm:"unique"`
 	Status string
+}
+
+func (t *task) updateField(field, value string) {
+	switch field {
+	case "name":
+		DB.Update(&task{ID: t.ID, Name: value})
+	case "status":
+		DB.Update(&task{ID: t.ID, Status: value})
+	}
 }
 
 type taskTimer struct {
@@ -113,25 +123,31 @@ func Delete(ID int) {
 	}
 }
 
-// UpdateFields updates the tasks attributes
-// func UpdateFields(taskID int, fieldValuePairs []string) (bool, error) {
-// 	task, err := tasksCollection.Read(taskID)
-// 	if err != nil {
-// 		return false, err
-// 	}
-// 	for _, pair := range fieldValuePairs {
-// 		arr := strings.Split(pair, ":")
-// 		field, value := arr[0], arr[1]
-// 		if field == "status" {
-// 			value = strings.ToUpper(value)
-// 		}
-// 		task[field] = value
-// 	}
-// 	if err = tasksCollection.Update(taskID, task); err != nil {
-// 		return false, err
-// 	}
-// 	return true, nil
-// }
+func findTaskById(id int) (*task, error) {
+	var t task
+	err := DB.One("ID", id, &t)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+//UpdateFields updates the tasks attributes
+func UpdateFields(taskID int, fieldValuePairs []string) (bool, error) {
+	task, err := findTaskById(taskID)
+	if err != nil {
+		return false, err
+	}
+	for _, pair := range fieldValuePairs {
+		arr := strings.Split(pair, ":")
+		field, value := arr[0], arr[1]
+		if field == "status" {
+			value = strings.ToUpper(value)
+		}
+		task.updateField(field, value)
+	}
+	return true, nil
+}
 
 // AddTimerForTask adds a timer for a given task id and duration
 func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
@@ -141,9 +157,9 @@ func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 		panic(err)
 	}
 
-	//	if hasRunningTimer(taskID) {
-	//		return false, errDuplicateTimerForTask
-	//	}
+	if hasRunningTimer(taskID) {
+		return false, errDuplicateTimerForTask
+	}
 
 	name := t.Name
 	startedAt := time.Now()
@@ -158,14 +174,12 @@ func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 	return true, nil
 }
 
-// func hasRunningTimer(taskID int) bool {
-// 	for _, timer := range timers[taskID] {
-// 		if timer.unfinished() {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
+func hasRunningTimer(taskID int) bool {
+	var taskTimers []taskTimer
+	_ = DB.Select(q.And(q.Eq("TaskID", taskID), q.Eq("Fired", false))).Find(&taskTimers)
+	fmt.Println("number of timers: %d", len(taskTimers))
+	return len(taskTimers) != 0
+}
 
 func pushNotification(message string) {
 	gosxnotifier.NewNotification(message).Push()
@@ -178,7 +192,6 @@ func createRows() [][]string {
 	if err != nil {
 		panic(err)
 	}
-
 	for _, tt := range tasks {
 		row := []string{
 			strconv.Itoa(tt.ID),
