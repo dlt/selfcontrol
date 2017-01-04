@@ -81,22 +81,17 @@ func addTimerForTask(args ...string) (string, error) {
 	if len(args) != 2 {
 		return "", errInvalidArgumentList
 	}
-
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
 		return args[0], errInvalidNumericArgument
 	}
-
 	timeInMinutes, err := time.ParseDuration(args[1] + "s")
 	if err != nil {
 		return args[1], errInvalidNumericArgument
 	}
-
 	_, err = tasks.AddTimerForTask(id, timeInMinutes)
 	if err != nil {
 		return "", err
 	}
-
-	tasks.Print()
 	return "", nil
 }
