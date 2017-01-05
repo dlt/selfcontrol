@@ -14,16 +14,14 @@ var shell = ishell.New()
 
 func main() {
 	shell.Println("The greatest conquest is self–control")
-
 	shell.Register("list", listTasks)
 	shell.Register("add", addTask)
 	shell.Register("delete", deleteTask)
 	shell.Register("update", updateTask)
 	shell.Register("timer", addTimerForTask)
 	shell.Register("exit", exit)
-
-	tasks.Print()
 	shell.Start()
+	tasks.Print()
 }
 
 func listTasks(args ...string) (string, error) {
@@ -63,12 +61,10 @@ func updateTask(args ...string) (string, error) {
 	if len(args) < 2 {
 		return "", errInvalidArgumentList
 	}
-
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
 		return args[0], errInvalidNumericArgument
 	}
-
 	_, err = tasks.UpdateFields(id, args[1:])
 	if err != nil {
 		return "couldn't update task", err
@@ -85,7 +81,7 @@ func addTimerForTask(args ...string) (string, error) {
 	if err != nil {
 		return args[0], errInvalidNumericArgument
 	}
-	timeInMinutes, err := time.ParseDuration(args[1] + "s")
+	timeInMinutes, err := time.ParseDuration(args[1] + "m")
 	if err != nil {
 		return args[1], errInvalidNumericArgument
 	}
