@@ -20,8 +20,8 @@ func main() {
 	shell.Register("update", updateTask)
 	shell.Register("timer", addTimerForTask)
 	shell.Register("exit", exit)
-	shell.Start()
 	tasks.Print()
+	shell.Start()
 }
 
 func listTasks(args ...string) (string, error) {

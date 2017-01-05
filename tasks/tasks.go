@@ -21,9 +21,10 @@ var (
 )
 
 type task struct {
-	ID     int    `storm:"id,increment"`
-	Name   string `storm:"unique"`
-	Status string
+	ID       int    `storm:"id,increment"`
+	Name     string `storm:"unique"`
+	Status   string
+	Priority int
 }
 
 func (t *task) updateField(field, value string) {
@@ -32,6 +33,12 @@ func (t *task) updateField(field, value string) {
 		DB.Update(&task{ID: t.ID, Name: value})
 	case "status":
 		DB.Update(&task{ID: t.ID, Status: value})
+	case "priority", "pri":
+		priority, err := strconv.Atoi(value)
+		if err != nil {
+			panic(err)
+		}
+		DB.Update(&task{ID: t.ID, Priority: priority})
 	}
 }
 
@@ -103,7 +110,7 @@ func Create(name string) {
 // Print all tasks in a ASCII table
 func Print() {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"ID", "name", "status", "total time"})
+	table.SetHeader([]string{"ID", "name", "status", "priority", "total time"})
 	table.SetAutoFormatHeaders(false)
 	for _, row := range createRows() {
 		table.Append(row)
@@ -188,7 +195,7 @@ func pushNotification(message string) {
 func createRows() [][]string {
 	var rows = [][]string{}
 	var tasks []task
-	err := DB.All(&tasks)
+	err := DB.Select(q.True()).OrderBy("Priority").Find(&tasks)
 	if err != nil {
 		panic(err)
 	}
@@ -197,6 +204,7 @@ func createRows() [][]string {
 			strconv.Itoa(tt.ID),
 			tt.Name,
 			coloredStatus(tt.Status),
+			strconv.Itoa(tt.Priority),
 			totalRunningTime(tt.ID).String(),
 		}
 		rows = append(rows, row)
