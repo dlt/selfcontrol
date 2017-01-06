@@ -201,7 +201,8 @@ func createRows() [][]string {
 	var tasks []task
 	err := DB.Select(q.True()).OrderBy("Priority").Find(&tasks)
 	if err != nil {
-		panic(err)
+		fmt.Println("You have no tasks added.")
+		fmt.Println("Add one by typing 'add <task-name>'")
 	}
 	for _, tt := range tasks {
 		row := []string{
