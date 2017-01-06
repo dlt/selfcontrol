@@ -76,16 +76,12 @@ func (tt *taskTimer) isExpired() bool {
 
 func (tt *taskTimer) ellapsedTime() time.Duration {
 	var finishedAt time.Time
-	if tt.unfinished() {
+	if !tt.Fired {
 		finishedAt = time.Now()
 	} else {
 		finishedAt = tt.ExpiresAt
 	}
 	return finishedAt.Sub(tt.StartedAt)
-}
-
-func (timer *taskTimer) unfinished() bool {
-	return !timer.Fired
 }
 
 func init() {
@@ -128,7 +124,7 @@ func Add(name string, fieldValuePairs []string) {
 // Print all tasks in a ASCII table
 func Print() {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"ID", "name", "status", "priority", "total time"})
+	table.SetHeader([]string{"ID", "Name", "Status", "Priority", "Total time"})
 	table.SetAutoFormatHeaders(false)
 	for _, row := range createRows() {
 		table.Append(row)
