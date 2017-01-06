@@ -27,13 +27,24 @@ type task struct {
 	Priority int
 }
 
+func (t *task) updateFieldValuePairs(fieldValuePairs []string) {
+	for _, pair := range fieldValuePairs {
+		arr := strings.Split(pair, ":")
+		field, value := arr[0], arr[1]
+		if field == "status" {
+			value = strings.ToUpper(value)
+		}
+		t.updateField(field, value)
+	}
+}
+
 func (t *task) updateField(field, value string) {
 	switch field {
-	case "name":
+	case "name", "n":
 		DB.Update(&task{ID: t.ID, Name: value})
-	case "status":
-		DB.Update(&task{ID: t.ID, Status: value})
-	case "priority", "pri":
+	case "status", "st", "s":
+		DB.Update(&task{ID: t.ID, Status: strings.ToUpper(value)})
+	case "priority", "pri", "p":
 		priority, err := strconv.Atoi(value)
 		if err != nil {
 			panic(err)
@@ -95,8 +106,8 @@ func startTimersLoop() {
 	}()
 }
 
-// Create a new task given its name
-func Create(name string) {
+// Add a new task given its name
+func Add(name string, fieldValuePairs []string) {
 	t := task{
 		Name:   name,
 		Status: "TODO",
@@ -105,6 +116,7 @@ func Create(name string) {
 	if err != nil {
 		panic(err)
 	}
+	t.updateFieldValuePairs(fieldValuePairs)
 }
 
 // Print all tasks in a ASCII table
@@ -130,6 +142,38 @@ func Delete(ID int) {
 	}
 }
 
+//UpdateFields updates the tasks attributes
+func UpdateFields(taskID int, fieldValuePairs []string) (bool, error) {
+	t, err := findTaskById(taskID)
+	if err != nil {
+		return false, err
+	}
+	t.updateFieldValuePairs(fieldValuePairs)
+	return true, nil
+}
+
+// AddTimerForTask adds a timer for a given task id and duration
+func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
+	t, err := findTaskById(taskID)
+	if err != nil {
+		panic(err)
+	}
+	if hasRunningTimer(taskID) {
+		return false, errDuplicateTimerForTask
+	}
+
+	startedAt := time.Now()
+	expiresAt := startedAt.Add(d)
+
+	DB.Save(&taskTimer{
+		TaskID:    taskID,
+		Message:   "Timer for '" + t.Name + "' finished!",
+		StartedAt: startedAt,
+		ExpiresAt: expiresAt,
+	})
+	return true, nil
+}
+
 func findTaskById(id int) (*task, error) {
 	var t task
 	err := DB.One("ID", id, &t)
@@ -137,48 +181,6 @@ func findTaskById(id int) (*task, error) {
 		return nil, err
 	}
 	return &t, nil
-}
-
-//UpdateFields updates the tasks attributes
-func UpdateFields(taskID int, fieldValuePairs []string) (bool, error) {
-	task, err := findTaskById(taskID)
-	if err != nil {
-		return false, err
-	}
-	for _, pair := range fieldValuePairs {
-		arr := strings.Split(pair, ":")
-		field, value := arr[0], arr[1]
-		if field == "status" {
-			value = strings.ToUpper(value)
-		}
-		task.updateField(field, value)
-	}
-	return true, nil
-}
-
-// AddTimerForTask adds a timer for a given task id and duration
-func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
-	var t task
-	err := DB.One("ID", taskID, &t)
-	if err != nil {
-		panic(err)
-	}
-
-	if hasRunningTimer(taskID) {
-		return false, errDuplicateTimerForTask
-	}
-
-	name := t.Name
-	startedAt := time.Now()
-	expiresAt := startedAt.Add(d)
-
-	DB.Save(&taskTimer{
-		TaskID:    taskID,
-		Message:   "Timer for '" + name + "' finished!",
-		StartedAt: startedAt,
-		ExpiresAt: expiresAt,
-	})
-	return true, nil
 }
 
 func hasRunningTimer(taskID int) bool {

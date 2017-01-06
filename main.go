@@ -35,11 +35,14 @@ func exit(args ...string) (string, error) {
 }
 
 func addTask(args ...string) (string, error) {
-	if len(args) != 1 {
+	if len(args) < 1 {
 		return "", errInvalidArgumentList
 	}
 	name := args[0]
-	tasks.Create(name)
+	if len(args) == 1 {
+		args = append(args, "pri:0")
+	}
+	tasks.Add(name, args[1:])
 	tasks.Print()
 	return "task created", nil
 }
