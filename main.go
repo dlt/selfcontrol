@@ -6,6 +6,7 @@ import (
 	"github.com/dlt/selfcontrol/tasks"
 	"strconv"
 	"time"
+	"fmt"
 )
 
 var errInvalidArgumentList = errors.New("invalid argument list")
@@ -85,6 +86,7 @@ func addTimerForTask(args ...string) (string, error) {
 		return args[0], errInvalidNumericArgument
 	}
 	timeInMinutes, err := time.ParseDuration(args[1] + "m")
+	fmt.Println(timeInMinutes)
 	if err != nil {
 		return args[1], errInvalidNumericArgument
 	}

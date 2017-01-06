@@ -63,11 +63,15 @@ type taskTimer struct {
 }
 
 func (tt *taskTimer) trigger() {
-	pushNotification(tt.Message)
+	tt.pushNotification()
 	err := DB.Update(&taskTimer{ID: tt.ID, Fired: true})
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (tt *taskTimer) isExpired() bool {
+	return tt.ExpiresAt.Before(time.Now())
 }
 
 func (tt *taskTimer) ellapsedTime() time.Duration {
@@ -100,7 +104,9 @@ func startTimersLoop() {
 			var taskTimers []taskTimer
 			_ = DB.Find("Fired", false, &taskTimers)
 			for _, tt := range taskTimers {
-				tt.trigger()
+				if tt.isExpired() {
+					tt.trigger()
+				}
 			}
 		}
 	}()
@@ -190,8 +196,8 @@ func hasRunningTimer(taskID int) bool {
 	return len(taskTimers) != 0
 }
 
-func pushNotification(message string) {
-	gosxnotifier.NewNotification(message).Push()
+func (tt *taskTimer)pushNotification() {
+	gosxnotifier.NewNotification(tt.Message).Push()
 }
 
 func createRows() [][]string {
