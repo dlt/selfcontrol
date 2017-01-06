@@ -2,11 +2,14 @@ package main
 
 import (
 	"errors"
-	"github.com/abiosoft/ishell"
-	"github.com/dlt/selfcontrol/tasks"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
-	"fmt"
+
+	"github.com/abiosoft/ishell"
+	"github.com/dlt/selfcontrol/tasks"
 )
 
 var errInvalidArgumentList = errors.New("invalid argument list")
@@ -21,8 +24,18 @@ func main() {
 	shell.Register("update", updateTask)
 	shell.Register("timer", addTimerForTask)
 	shell.Register("exit", exit)
+	tasks.Init(getDBFile())
 	tasks.Print()
 	shell.Start()
+}
+
+func getDBFile() string {
+	args := os.Args
+	if len(args) == 1 {
+		homedir := os.Getenv("HOME")
+		return filepath.Join(homedir, ".selfcontrol.db")
+	}
+	return args[1]
 }
 
 func listTasks(args ...string) (string, error) {

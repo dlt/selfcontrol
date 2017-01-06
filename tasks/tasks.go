@@ -84,8 +84,8 @@ func (tt *taskTimer) ellapsedTime() time.Duration {
 	return finishedAt.Sub(tt.StartedAt)
 }
 
-func init() {
-	d, err := storm.Open(".selfcontrol.db")
+func Init(dbfile string) {
+	d, err := storm.Open(dbfile)
 	DB = d
 	if err != nil {
 		panic(err)
@@ -192,7 +192,7 @@ func hasRunningTimer(taskID int) bool {
 	return len(taskTimers) != 0
 }
 
-func (tt *taskTimer)pushNotification() {
+func (tt *taskTimer) pushNotification() {
 	gosxnotifier.NewNotification(tt.Message).Push()
 }
 
@@ -201,8 +201,8 @@ func createRows() [][]string {
 	var tasks []task
 	err := DB.Select(q.True()).OrderBy("Priority").Find(&tasks)
 	if err != nil {
-		fmt.Println("You have no tasks added.")
-		fmt.Println("Add one by typing 'add <task-name>'")
+		fmt.Println("You still have no tasks added.")
+		fmt.Println("Add the first one by typing 'add <task-name>'")
 	}
 	for _, tt := range tasks {
 		row := []string{
