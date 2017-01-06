@@ -85,7 +85,7 @@ func (tt *taskTimer) ellapsedTime() time.Duration {
 }
 
 func init() {
-	d, err := storm.Open("selfcontrol.db")
+	d, err := storm.Open(".selfcontrol.db")
 	DB = d
 	if err != nil {
 		panic(err)
