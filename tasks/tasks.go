@@ -110,14 +110,12 @@ func startTimersLoop() {
 
 // Add a new task given its name
 func Add(name string, fieldValuePairs []string) {
-	t := task{
-		Name:   name,
-		Status: "TODO",
-	}
-	err := DB.Save(&t)
+	t := &task{}
+	err := DB.Save(t)
 	if err != nil {
 		panic(err)
 	}
+	fieldValuePairs = append(fieldValuePairs, "n:" + name)
 	t.updateFieldValuePairs(fieldValuePairs)
 }
 
