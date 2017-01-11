@@ -4,6 +4,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -63,4 +64,43 @@ func TestDelete(t *testing.T) {
 	Delete(tsk.ID)
 	err = DB.One("Name", "foo", &tsk)
 	assert.Error(t, err, "not found error was expected")
+}
+
+func TestUpdate(t *testing.T) {
+	Add("foo", make([]string, 0))
+	var tsk task
+	err := DB.One("Name", "foo", &tsk)
+	if err != nil {
+		t.Error(err)
+	}
+	if tsk.Name != "foo" {
+		t.Error("expected task name", "foo", tsk.Name)
+	}
+
+	fieldValuePairs := []string{"pri:10", "status:done", "n:eggs", "t:foo"}
+	UpdateFields(tsk.ID, fieldValuePairs)
+	err = DB.One("ID", tsk.ID, &tsk)
+
+	if tsk.Name != "eggs" {
+		t.Error("expected task Name", "eggs", tsk.Name)
+	}
+	if tsk.Status != "DONE" {
+		t.Error("expected task Status", "DONE", tsk.Status)
+	}
+	if tsk.Priority != 10 {
+		t.Error("expected task Priority", 10, tsk.Priority)
+	}
+	tags := []string{"foo"}
+	if !reflect.DeepEqual(tsk.Tags, tags) {
+		t.Error("expected task Tags", tags, tsk.Tags)
+	}
+
+	fieldValuePairs = []string{"t:-foo"}
+	UpdateFields(tsk.ID, fieldValuePairs)
+	err = DB.One("ID", tsk.ID, &tsk)
+	tags = make([]string, 0)
+	if !reflect.DeepEqual(tsk.Tags, tags) {
+		t.Error("expected task Tags", tags, tsk.Tags)
+	}
+
 }
