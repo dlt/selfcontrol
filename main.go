@@ -23,6 +23,7 @@ func main() {
 	shell.Register("update", updateTask)
 	shell.Register("timer", addTimerForTask)
 	shell.Register("exit", exit)
+	shell.SetHomeHistoryPath(".ishell_history")
 	tasks.Init(getDBFile())
 	tasks.Print()
 	shell.Start()
