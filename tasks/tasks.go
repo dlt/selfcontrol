@@ -25,6 +25,7 @@ type task struct {
 	Name     string `storm:"unique"`
 	Status   string
 	Priority int
+	Tags     []string
 }
 
 func (t *task) updateFieldValuePairs(fieldValuePairs []string) {
@@ -50,7 +51,39 @@ func (t *task) updateField(field, value string) {
 			panic(err)
 		}
 		DB.Update(&task{ID: t.ID, Priority: priority})
+	case "tags", "t":
+		tags := processTags(t.Tags, value)
+		DB.Update(&task{ID: t.ID, Tags: tags})
 	}
+}
+
+func processTags(tags []string, tag string) []string {
+	if len(strings.Trim(tag, " ")) == 0 {
+		return tags
+	}
+	if tag[0] == '-' {
+		return removeTag(tags, tag[1:])
+	}
+	return addTag(tags, tag)
+}
+
+func addTag(tags []string, tag string) []string {
+	for _, t := range tags {
+		if t == tag {
+			return tags
+		}
+	}
+	return append(tags, tag)
+}
+
+func removeTag(tags []string, tag string) []string {
+	newTags := make([]string, 0)
+	for _, t := range tags {
+		if t != tag {
+			newTags = append(newTags, t)
+		}
+	}
+	return newTags
 }
 
 type taskTimer struct {
@@ -115,14 +148,14 @@ func Add(name string, fieldValuePairs []string) {
 	if err != nil {
 		panic(err)
 	}
-	fieldValuePairs = append(fieldValuePairs, "n:" + name)
+	fieldValuePairs = append(fieldValuePairs, "n:"+name)
 	t.updateFieldValuePairs(fieldValuePairs)
 }
 
 // Print all tasks in a ASCII table
 func Print() {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"ID", "Name", "Status", "Priority", "Total time"})
+	table.SetHeader([]string{"ID", "Name", "Status", "Priority", "Tags", "Total time"})
 	table.SetAutoFormatHeaders(false)
 	for _, row := range createRows() {
 		table.Append(row)
@@ -208,6 +241,7 @@ func createRows() [][]string {
 			tt.Name,
 			coloredStatus(tt.Status),
 			strconv.Itoa(tt.Priority),
+			strings.Join(tt.Tags, ","),
 			totalRunningTime(tt.ID).String(),
 		}
 		rows = append(rows, row)
