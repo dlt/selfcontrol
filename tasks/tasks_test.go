@@ -137,3 +137,29 @@ func TestAddTimer(t *testing.T) {
 		t.Error("expected task ID", tt.TaskID, tsk.ID)
 	}
 }
+
+func TestCancelTimer(t *testing.T) {
+	name := "withcanceledtimer"
+	fieldValuePairs := make([]string, 0)
+	Add(name, fieldValuePairs)
+	var tsk task
+	_ = DB.One("Name", name, &tsk)
+
+	duration, _ := time.ParseDuration("1m")
+
+	AddTimerForTask(tsk.ID, duration)
+
+	var tt taskTimer
+	_ = DB.One("TaskID", tsk.ID, &tt)
+
+	if tt.TaskID != tsk.ID {
+		t.Error("expected task ID", tt.TaskID, tsk.ID)
+	}
+
+	CancelTimerForTask(tsk.ID)
+	err := DB.One("TaskID", tsk.ID, &tt)
+	if err == nil {
+		t.Error("expected task to have canceled timer", tt.TaskID, 0)
+	}
+
+}

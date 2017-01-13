@@ -25,6 +25,7 @@ func main() {
 	shell.Register("update", updateTask)
 	shell.Register("edit", updateTask)
 	shell.Register("timer", addTimerForTask)
+	shell.Register("cancel", cancelTimerForTask)
 	shell.Register("exit", exit)
 	shell.Register("quit", exit)
 	shell.SetHomeHistoryPath(".ishell_history")
@@ -110,5 +111,18 @@ func addTimerForTask(args ...string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return "", nil
+}
+
+func cancelTimerForTask(args ...string) (string, error) {
+	if len(args) != 1 {
+		return "", errInvalidArgumentList
+	}
+	id, err := strconv.Atoi(args[0])
+	if err != nil {
+		return args[0], errInvalidNumericArgument
+	}
+	tasks.CancelTimerForTask(id)
+	tasks.Print()
 	return "", nil
 }

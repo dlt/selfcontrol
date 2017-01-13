@@ -8,6 +8,6 @@ Like task warrior with pomodoro timers
 - [ ] Add proper readme with examples and screenshots :smile:
 - [ ] Add more tests
 - [ ] Show good error messages to users
-- [ ] Add feature to stop timers
+- [ ] Add feature to cancel timers
 - [ ] Recurring timers
 - [ ] Options for listing tasks (sort by priority, name, status)

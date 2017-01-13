@@ -223,6 +223,15 @@ func AddTimerForTask(taskID int, d time.Duration) (bool, error) {
 	return true, nil
 }
 
+func CancelTimerForTask(taskID int) {
+	var tt taskTimer
+	DB.One("TaskID", taskID, &tt)
+	err := DB.DeleteStruct(&tt)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func findTaskById(id int) (*task, error) {
 	var t task
 	err := DB.One("ID", id, &t)
