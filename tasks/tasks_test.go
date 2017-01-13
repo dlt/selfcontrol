@@ -104,3 +104,16 @@ func TestUpdate(t *testing.T) {
 	}
 
 }
+
+func TestAddTags(t *testing.T) {
+	name := "withtags"
+	fieldValuePairs := []string{"t:foo,bar,eggs,biz,-biz"}
+
+	Add(name, fieldValuePairs)
+	var tsk task
+	_ = DB.One("Name", name, &tsk)
+	tags := []string{"foo", "bar", "eggs"}
+	if !reflect.DeepEqual(tsk.Tags, tags) {
+		t.Error("expected task Tags", tags, tsk.Tags)
+	}
+}

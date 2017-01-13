@@ -57,14 +57,28 @@ func (t *task) updateField(field, value string) {
 	}
 }
 
-func processTags(tags []string, tag string) []string {
-	if len(strings.Trim(tag, " ")) == 0 {
-		return tags
+func processTags(oldTags []string, tags string) []string {
+	if len(strings.Trim(tags, " ")) == 0 {
+		return oldTags
 	}
-	if tag[0] == '-' {
-		return removeTag(tags, tag[1:])
+	newTags := make([]string, 0)
+	if strings.Index(tags, ",") > 0 {
+		for _, t := range strings.Split(tags, ",") {
+			newTags = append(newTags, t)
+		}
+	} else {
+		newTags = append(newTags, tags)
 	}
-	return addTag(tags, tag)
+
+	for _, tag := range newTags {
+		if tag[0] == '-' {
+			oldTags = removeTag(oldTags, tag[1:])
+		} else {
+			oldTags = addTag(oldTags, tag)
+		}
+	}
+
+	return oldTags
 }
 
 func addTag(tags []string, tag string) []string {
@@ -230,7 +244,7 @@ func (tt *taskTimer) pushNotification() {
 func createRows() [][]string {
 	var rows = [][]string{}
 	var tasks []task
-	err := DB.Select(q.True()).OrderBy("Priority").Find(&tasks)
+	err := DB.All(&tasks)
 	if err != nil {
 		fmt.Println("You still have no tasks added.")
 		fmt.Println("Add the first one by typing 'add <task-name>'")
