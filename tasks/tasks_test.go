@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 )
 
 var (
@@ -115,5 +116,24 @@ func TestAddTags(t *testing.T) {
 	tags := []string{"foo", "bar", "eggs"}
 	if !reflect.DeepEqual(tsk.Tags, tags) {
 		t.Error("expected task Tags", tags, tsk.Tags)
+	}
+}
+
+func TestAddTimer(t *testing.T) {
+	name := "withtimer"
+	fieldValuePairs := make([]string, 0)
+	Add(name, fieldValuePairs)
+	var tsk task
+	_ = DB.One("Name", name, &tsk)
+
+	duration, _ := time.ParseDuration("1m")
+
+	AddTimerForTask(tsk.ID, duration)
+
+	var tt taskTimer
+	_ = DB.One("TaskID", tsk.ID, &tt)
+
+	if tt.TaskID != tsk.ID {
+		t.Error("expected task ID", tt.TaskID, tsk.ID)
 	}
 }

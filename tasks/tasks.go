@@ -67,7 +67,6 @@ func processTags(oldTags []string, tags string) []string {
 	} else {
 		newTags = append(newTags, tags)
 	}
-
 	for _, tag := range newTags {
 		if tag[0] == '-' {
 			oldTags = removeTag(oldTags, tag[1:])
