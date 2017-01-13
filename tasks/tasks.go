@@ -167,7 +167,12 @@ func Add(name string, fieldValuePairs []string) {
 // Print all tasks in a ASCII table
 func Print() {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"ID", "Name", "Status", "Priority", "Tags", "Total time"})
+	header := []string{"ID", "Name", "Status", "Priority", "Tags", "Total time"}
+	coloredHeader := make([]string, 0)
+	for _, h := range header {
+		coloredHeader = append(coloredHeader, color.YellowString(h))
+	}
+	table.SetHeader(coloredHeader)
 	table.SetAutoFormatHeaders(false)
 	for _, row := range createRows() {
 		table.Append(row)
@@ -251,13 +256,22 @@ func createRows() [][]string {
 			strconv.Itoa(tt.ID),
 			tt.Name,
 			coloredStatus(tt.Status),
-			strconv.Itoa(tt.Priority),
+			coloredPriority(tt.Priority),
 			strings.Join(tt.Tags, ","),
 			totalRunningTime(tt.ID).String(),
 		}
 		rows = append(rows, row)
 	}
 	return rows
+}
+
+func coloredPriority(p int) string {
+	if p > 0 && p <= 2 {
+		return color.GreenString(strconv.Itoa(p))
+	} else if p < 5 {
+		return color.YellowString(strconv.Itoa(p))
+	}
+	return color.RedString(strconv.Itoa(p))
 }
 
 func totalRunningTime(taskID int) time.Duration {

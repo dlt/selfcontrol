@@ -9,6 +9,7 @@ import (
 
 	"github.com/abiosoft/ishell"
 	"github.com/dlt/selfcontrol/tasks"
+	"github.com/fatih/color"
 )
 
 var errInvalidArgumentList = errors.New("invalid argument list")
@@ -16,13 +17,16 @@ var errInvalidNumericArgument = errors.New("invalid numeric argument")
 var shell = ishell.New()
 
 func main() {
-	shell.Println("The greatest conquest is self–control")
+	banner := color.YellowString("The greatest conquest is ") + color.RedString("self-control.")
+	shell.Println(banner)
 	shell.Register("list", listTasks)
 	shell.Register("add", addTask)
 	shell.Register("delete", deleteTask)
 	shell.Register("update", updateTask)
+	shell.Register("edit", updateTask)
 	shell.Register("timer", addTimerForTask)
 	shell.Register("exit", exit)
+	shell.Register("quit", exit)
 	shell.SetHomeHistoryPath(".ishell_history")
 	tasks.Init(getDBFile())
 	tasks.Print()
