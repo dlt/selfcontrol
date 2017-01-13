@@ -6,8 +6,8 @@ Like task warrior with pomodoro timers
 - [x] Add option to specify database file on start
 - [x] Add tags to tasks
 - [ ] Add proper readme with examples and screenshots :smile:
-- [ ] Add tests
+- [ ] Add more tests
 - [ ] Show good error messages to users
-- [ ] 'Timer schemas'
-- [ ] Recurring tasks
-- [ ] Options for listing tasks (sort by)
+- [ ] Add feature to stop timers
+- [ ] Recurring timers
+- [ ] Options for listing tasks (sort by priority, name, status)

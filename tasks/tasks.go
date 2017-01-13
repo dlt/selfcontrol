@@ -63,9 +63,7 @@ func processTags(oldTags []string, tags string) []string {
 	}
 	newTags := make([]string, 0)
 	if strings.Index(tags, ",") > 0 {
-		for _, t := range strings.Split(tags, ",") {
-			newTags = append(newTags, t)
-		}
+		newTags = append(newTags, strings.Split(tags, ",")...)
 	} else {
 		newTags = append(newTags, tags)
 	}
@@ -233,7 +231,6 @@ func findTaskById(id int) (*task, error) {
 func hasRunningTimer(taskID int) bool {
 	var taskTimers []taskTimer
 	_ = DB.Select(q.And(q.Eq("TaskID", taskID), q.Eq("Fired", false))).Find(&taskTimers)
-	fmt.Println("number of timers: %d", len(taskTimers))
 	return len(taskTimers) != 0
 }
 
