@@ -9,9 +9,7 @@ import (
 	"time"
 )
 
-var (
-	testdbfile string = filepath.Join(os.Getenv("HOME"), ".selfcontrol_test.db")
-)
+var testdbfile = filepath.Join(os.Getenv("HOME"), ".selfcontrol_test.db")
 
 func TestMain(m *testing.M) {
 	Init(testdbfile)
@@ -36,7 +34,6 @@ func TestAdd(t *testing.T) {
 	if tsk.Name != "foo" {
 		t.Error("expected task name", "foo", tsk.Name)
 	}
-
 	fieldValuePairs := []string{"pri:1", "status:done"}
 	Add("bar", fieldValuePairs)
 	err = DB.One("Name", "bar", &tsk)
@@ -161,5 +158,4 @@ func TestCancelTimer(t *testing.T) {
 	if err == nil {
 		t.Error("expected task to have canceled timer", tt.TaskID, 0)
 	}
-
 }
