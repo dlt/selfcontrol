@@ -254,7 +254,7 @@ func (tt *taskTimer) pushNotification() {
 func createRows() [][]string {
 	var rows = [][]string{}
 	var tasks []task
-	err := DB.All(&tasks)
+	err := DB.Select(q.True()).OrderBy("Name").Find(&tasks)
 	if err != nil {
 		fmt.Println("You still have no tasks added.")
 		fmt.Println("Add the first one by typing 'add <task-name>'")

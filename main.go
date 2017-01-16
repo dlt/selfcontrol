@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+	"strings"
 
 	"github.com/abiosoft/ishell"
 	"github.com/dlt/selfcontrol/tasks"
@@ -67,14 +68,29 @@ func addTask(args ...string) (string, error) {
 }
 
 func deleteTask(args ...string) (string, error) {
-	if len(args) != 1 {
+	if len(args) < 1 {
 		return "", errInvalidArgumentList
 	}
-	id, err := strconv.Atoi(args[0])
-	if err != nil {
-		return args[0], errInvalidNumericArgument
+	ids := make([]int, 0)
+	if strings.Index(args[0], ",") > 0 {
+		strs := strings.Split(args[0], ",")
+		for _, str := range strs {
+			id, err := strconv.Atoi(str)
+			if err != nil {
+				return args[0], errInvalidNumericArgument
+			}
+			ids = append(ids, id)
+		}
+	} else {
+		id, err := strconv.Atoi(args[0])
+		if err != nil {
+			return args[0], errInvalidNumericArgument
+		}
+		ids = append(ids, id)
 	}
-	tasks.Delete(id)
+	for _, id := range ids {
+		tasks.Delete(id)
+	}
 	tasks.Print()
 	return "", nil
 }
