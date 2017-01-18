@@ -17,6 +17,7 @@ var errInvalidArgumentList = errors.New("invalid argument list")
 var errInvalidNumericArgument = errors.New("invalid numeric argument")
 var shell = ishell.New()
 
+
 func main() {
 	banner := color.YellowString("The greatest conquest is ") + color.RedString("self-control.")
 	shell.Println(banner)
@@ -62,7 +63,10 @@ func addTask(args ...string) (string, error) {
 	if len(args) == 1 {
 		args = append(args, "pri:0")
 	}
-	tasks.Add(name, args[1:])
+	err := tasks.Add(name, args[1:])
+	if err != nil {
+		return "", err
+	}
 	tasks.Print()
 	return "task created", nil
 }

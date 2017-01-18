@@ -28,33 +28,37 @@ type task struct {
 	Tags     []string
 }
 
-func (t *task) updateFieldValuePairs(fieldValuePairs []string) {
+func (t *task) updateFieldValuePairs(fieldValuePairs []string) (err error) {
 	for _, pair := range fieldValuePairs {
 		arr := strings.Split(pair, ":")
 		field, value := arr[0], arr[1]
-		if field == "status" {
-			value = strings.ToUpper(value)
+		if err = t.updateField(field, value); err != nil {
+			return err
 		}
-		t.updateField(field, value)
 	}
+	return
 }
 
-func (t *task) updateField(field, value string) {
+func (t *task) String() string {
+	return "n: " + t.Name + " s: " + t.Status + " p: " + string(t.Priority) + " t: [" + strings.Join(t.Tags, ",") + "]"
+}
+
+func (t *task) updateField(field, value string) (err error) {
 	switch field {
 	case "name", "n":
-		DB.Update(&task{ID: t.ID, Name: value})
+		t.Name = value
 	case "status", "st", "s":
-		DB.Update(&task{ID: t.ID, Status: strings.ToUpper(value)})
+		t.Status = strings.ToUpper(value)
 	case "priority", "pri", "p":
 		priority, err := strconv.Atoi(value)
 		if err != nil {
-			panic(err)
+			return err
 		}
-		DB.Update(&task{ID: t.ID, Priority: priority})
+		t.Priority = priority
 	case "tags", "t":
-		tags := processTags(t.Tags, value)
-		DB.Update(&task{ID: t.ID, Tags: tags})
+		t.Tags = processTags(t.Tags, value)
 	}
+	return err
 }
 
 func processTags(oldTags []string, tags string) []string {
@@ -153,14 +157,18 @@ func startTimersLoop() {
 }
 
 // Add a new task given its name
-func Add(name string, fieldValuePairs []string) {
-	t := &task{Status: "TODO"}
-	err := DB.Save(t)
-	if err != nil {
-		panic(err)
-	}
+func Add(name string, fieldValuePairs []string) (err error) {
 	fieldValuePairs = append(fieldValuePairs, "n:"+name)
-	t.updateFieldValuePairs(fieldValuePairs)
+
+	t := &task{Status: "TODO"}
+	err = t.updateFieldValuePairs(fieldValuePairs)
+
+	if err != nil {
+		return err
+	}
+
+	err = DB.Save(t)
+	return
 }
 
 // Print all tasks in a ASCII table
@@ -197,7 +205,15 @@ func UpdateFields(taskID int, fieldValuePairs []string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	t.updateFieldValuePairs(fieldValuePairs)
+	err = t.updateFieldValuePairs(fieldValuePairs)
+	if err != nil {
+		return false, err
+	}
+	err = DB.Update(t)
+	if err != nil {
+		return false, err
+	}
+	fmt.Println("update t: " + t.String())
 	return true, nil
 }
 
@@ -243,7 +259,7 @@ func findTaskById(id int) (*task, error) {
 
 func hasRunningTimer(taskID int) bool {
 	var taskTimers []taskTimer
-	_ = DB.Select(q.And(q.Eq("TaskID", taskID), q.Eq("Fired", false))).Find(&taskTimers)
+	DB.Select(q.And(q.Eq("TaskID", taskID), q.Eq("Fired", false))).Find(&taskTimers)
 	return len(taskTimers) != 0
 }
 

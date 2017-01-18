@@ -77,7 +77,12 @@ func TestUpdate(t *testing.T) {
 
 	fieldValuePairs := []string{"pri:10", "status:done", "n:eggs", "t:foo"}
 	UpdateFields(tsk.ID, fieldValuePairs)
+
+
 	err = DB.One("ID", tsk.ID, &tsk)
+	if err != nil {
+		panic(err)
+	}
 
 	if tsk.Name != "eggs" {
 		t.Error("expected task Name", "eggs", tsk.Name)
