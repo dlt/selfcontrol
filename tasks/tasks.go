@@ -8,7 +8,9 @@ import (
 	"github.com/deckarep/gosx-notifier"
 	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
+	"gopkg.in/kyokomi/emoji.v1"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -282,7 +284,7 @@ func createRows() [][]string {
 			coloredStatus(tt.Status),
 			coloredPriority(tt.Priority),
 			strings.Join(tt.Tags, ","),
-			totalRunningTime(tt.ID).String(),
+			formatRunningTime(tt.ID),
 		}
 		rows = append(rows, row)
 	}
@@ -296,6 +298,20 @@ func coloredPriority(p int) string {
 		return color.YellowString(strconv.Itoa(p))
 	}
 	return color.RedString(strconv.Itoa(p))
+}
+
+func formatRunningTime(taskID int) string {
+	var t = totalRunningTime(taskID).String()
+	var i = strings.Index(t, ".")
+	if i > 0 {
+		re := regexp.MustCompile("\\..*$")
+		t = re.ReplaceAllLiteralString(t, "") + "s"
+	}
+
+	if hasRunningTimer(taskID) {
+		return t + emoji.Sprint(" :timer_clock:")
+	}
+	return t
 }
 
 func totalRunningTime(taskID int) time.Duration {

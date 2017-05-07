@@ -5,18 +5,17 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 	"strings"
+	"time"
 
-	"github.com/abiosoft/ishell"
 	"github.com/dlt/selfcontrol/tasks"
 	"github.com/fatih/color"
+	"gopkg.in/abiosoft/ishell.v1"
 )
 
 var errInvalidArgumentList = errors.New("invalid argument list")
 var errInvalidNumericArgument = errors.New("invalid numeric argument")
 var shell = ishell.New()
-
 
 func main() {
 	banner := color.YellowString("The greatest conquest is ") + color.RedString("self-control.")
